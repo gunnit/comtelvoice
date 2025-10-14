@@ -1,0 +1,540 @@
+{
+  "annoFiscale": 2024,
+  "dataChiusuraEsercizio": "2024-12-31",
+  "dataApprovazioneBilancio": "2025-03-31",
+  "valuta": "EUR",
+
+  "sintesiFinanziaria": {
+    "capitaleSociale": 774521,
+    "numeroAzioni": 16400000,
+    "patrimonioNetto": 922884,
+    "utileEsercizio": 148364,
+    "ricaviVenditePrestazioni": 42142894,
+    "valoreProduzione": 42481075,
+    "risultatoOperativo": 1113481,
+    "ebitda": 1672000,
+    "ebitdaRicorrente": 2019000,
+    "posizioneFinanziariaNetta": 2582000,
+    "posizioneFinanziariaNettaAdjusted": 4662000,
+    "disponibilitaLiquide": 2864021,
+    "valutazioneComplessiva": "Esercizio 2024 chiuso con utile di €148k, in netto miglioramento rispetto alla perdita di €4.4M del 2023. EBITDA ricorrente in crescita del 2.8% a €2.0M. Significativa riduzione dell'indebitamento finanziario netto da €4.5M a €2.6M (-43%)"
+  },
+
+  "confrontoStorico": {
+    "2024": {
+      "utileEsercizio": 148364,
+      "ricavi": 42142894,
+      "ebitda": 1672000,
+      "ebitdaRicorrente": 2019000,
+      "pfn": 2582000,
+      "patrimonioNetto": 922884
+    },
+    "2023": {
+      "utileEsercizio": -4402796,
+      "ricavi": 41937091,
+      "ebitda": 1964000,
+      "ebitdaRicorrente": 1964000,
+      "pfn": 4530000,
+      "patrimonioNetto": 774521
+    },
+    "variazioni": {
+      "utileEsercizio": "+€4.551k (ritorno all'utile)",
+      "ricavi": "+€206k (+0.5%)",
+      "ebitda": "-€292k (-14.9%)",
+      "ebitdaRicorrente": "+€55k (+2.8%)",
+      "pfn": "-€1.948k (-43.0%)",
+      "patrimonioNetto": "+€148k (+19.1%)"
+    }
+  },
+
+  "statoPatrimoniale": {
+    "attivo": {
+      "immobilizzazioni": {
+        "immateriali": 2622174,
+        "materiali": 313321,
+        "finanziarie": 118027,
+        "totale": 3053522
+      },
+      "attivoCircolante": {
+        "rimanenze": 3566035,
+        "creditiCommerciali": 16700140,
+        "creditiTributari": 342318,
+        "imposteAnticipate": 4445,
+        "altriCrediti": 944591,
+        "disponibilitaLiquide": 2864021,
+        "totaleCrediti": 18260238,
+        "totale": 24690294
+      },
+      "rateiRisconti": 1946442,
+      "totaleAttivo": 29690258
+    },
+    "passivo": {
+      "patrimonioNetto": {
+        "capitale": 774521,
+        "riserve": 0,
+        "utileEsercizio": 148364,
+        "totale": 922884
+      },
+      "fondiRischiOneri": {
+        "trattamentoQuiescenza": 397318,
+        "imposteDifferite": 2503,
+        "totale": 399821
+      },
+      "tfr": 123124,
+      "debiti": {
+        "versoBanche": 5445658,
+        "acconti": 3146822,
+        "versoFornitori": 14991033,
+        "tributari": 356356,
+        "versoIstitutiPrevidenza": 618614,
+        "altriDebiti": 902956,
+        "versoImpreseSottoControlloControllanti": 262188,
+        "totale": 25723628
+      },
+      "rateiRisconti": 2520801,
+      "totalePassivo": 29690258
+    }
+  },
+
+  "contoEconomico": {
+    "valoreProduzione": {
+      "ricaviVendite": 42142894,
+      "variazioneRimanenze": -184691,
+      "altriRicaviProventi": 522872,
+      "totale": 42481075
+    },
+    "costiProduzione": {
+      "materieConsumi": 16760369,
+      "servizi": 14516166,
+      "godimentoBeniTerzi": 1334172,
+      "personale": 7218994,
+      "ammortamentiSvalutazioni": 997850,
+      "oneriDiversiGestione": 540043,
+      "totale": 41367594
+    },
+    "risultatoOperativo": 1113481,
+    "proventiOneriFinanziari": {
+      "proventiFinanziari": 94674,
+      "oneriFinanziari": -669836,
+      "utiliPerditeCambi": -10483,
+      "totale": -585644
+    },
+    "rettificheAttivitaPassivitaFinanziarie": 0,
+    "risultatoPrimaImposte": 527837,
+    "imposteReddito": {
+      "correnti": 360907,
+      "differite": 18567,
+      "totale": 379473
+    },
+    "utilePerdita": 148364
+  },
+
+  "rendicontoFinanziario": {
+    "flussiAttivitaOperativa": 3341232,
+    "flussiAttivitaInvestimento": -1392656,
+    "flussiAttivitaFinanziamento": -1447339,
+    "incrementoDisponibilitaLiquide": 501237,
+    "disponibilitaIniziali": 2362782,
+    "disponibilitaFinali": 2864021
+  },
+
+  "indicatoriChiave": {
+    "redditualita": {
+      "risultatoNettoMargin": "0.4%",
+      "ebitMargin": "4.0%",
+      "ebitdaRicorrenteMargin": "4.8%",
+      "ebitMargin_percentuale": "2.6%",
+      "roi": "31.8%",
+      "ros": "2.6%"
+    },
+    "solidita": {
+      "rapportoCapitaleInvestitoPatrimonioNetto": 3.8,
+      "rapportoPfnPatrimonioNetto": 2.8,
+      "rapportoPfnEbitdaRicorrente": 1.3,
+      "rapportoPfnAdjustedEbitdaRicorrente": 2.3,
+      "indiceDisponibilita": 1.0
+    },
+    "liquidita": {
+      "giorniMediIncasso": 120,
+      "giorniMediPagamento": 140,
+      "capitaleCircolanteNetto": 975000,
+      "capitaleCircolanteCommerciale": 5282000
+    },
+    "indebitamento": {
+      "pfn": 2582000,
+      "debitiFinanziariCorrente": 4728218,
+      "debitiFinanziariNonCorrente": 717440,
+      "debitiCommercialiScadutiOltre60gg": 2080000
+    }
+  },
+
+  "lineeBusiness": [
+    {
+      "nome": "Networking & Security",
+      "descrizione": "Soluzioni di networking e sicurezza informatica",
+      "ricavi2024": 15486000,
+      "ricavi2023": 18917000,
+      "percentuale2024": 36.7,
+      "percentuale2023": 45.1,
+      "variazione": -3431000,
+      "variazionePercentuale": -18.1,
+      "trend": "decremento"
+    },
+    {
+      "nome": "Customer & User Interaction",
+      "descrizione": "VoIP, Unified Communications e soluzioni di collaborazione",
+      "ricavi2024": 18716000,
+      "ricavi2023": 16815000,
+      "percentuale2024": 44.4,
+      "percentuale2023": 40.1,
+      "variazione": 1901000,
+      "variazionePercentuale": 11.3,
+      "trend": "incremento"
+    },
+    {
+      "nome": "Infrastructure Technology",
+      "descrizione": "Infrastrutture IT, cloud e trasformazione digitale",
+      "ricavi2024": 6969000,
+      "ricavi2023": 4704000,
+      "percentuale2024": 16.5,
+      "percentuale2023": 11.2,
+      "variazione": 2265000,
+      "variazionePercentuale": 48.2,
+      "trend": "forte incremento",
+      "nota": "Linea di business con la crescita più significativa grazie alla strategia di espansione in nuovi settori ad alta marginalità"
+    },
+    {
+      "nome": "Audio Video",
+      "descrizione": "Sistemi audio e video professionali",
+      "ricavi2024": 972000,
+      "ricavi2023": 1501000,
+      "percentuale2024": 2.3,
+      "percentuale2023": 3.6,
+      "variazione": -529000,
+      "variazionePercentuale": -35.3,
+      "trend": "decremento"
+    }
+  ],
+
+  "distribuzioneGeografica": {
+    "italia": {
+      "ricavi2024": 40185621,
+      "ricavi2023": 41405130,
+      "percentuale": 95.4
+    },
+    "europa": {
+      "ricavi2024": 284343,
+      "ricavi2023": 519032,
+      "percentuale": 0.7
+    },
+    "extraEuropa": {
+      "ricavi2024": 1672930,
+      "ricavi2023": 12929,
+      "percentuale": 4.0,
+      "nota": "Significativo incremento dovuto a progettualità in Mozambico"
+    }
+  },
+
+  "strutturaOrganizzativa": {
+    "deputyGM_CCO": {
+      "nome": "Dott. Mattia Conti",
+      "ruolo": "Deputy General Manager di COMTEL e Chief Commercial Officer di Gruppo",
+      "responsabilita": "Supervisione e coordinamento di Sales, Engineering, Operations (COMTEL) + attività commerciali Gruppo"
+    },
+    "aree": {
+      "sales": {
+        "responsabile": "Mattia Conti",
+        "team": {
+          "strategicSales": ["M. Buda", "A. Ciaccia"],
+          "regionalSales": {
+            "nord": "G. Tantaro",
+            "centroSud": "R. Sorrentino",
+            "sicilia": "V. Adorno"
+          },
+          "serviceSales": "T. Morello",
+          "tenderManagement": "S. Cipriani",
+          "orderManagement": "M. Crippa",
+          "organizzazioneEventi": "Giulia Ramera"
+        }
+      },
+      "engineering": {
+        "responsabile": "Stefano Bianchi Jannetti",
+        "focus": [
+          "Progettazione tecnica e definizione soluzioni",
+          "Coerenza architetture con standard tecnologici Gruppo",
+          "Innovazione tecnologica (Networking, Security, Transmission & Access, VOIP, UC, IT)",
+          "Dimensionamento soluzioni in fase di gara"
+        ],
+        "team": "Project Engineering per territorio e ambito progettuale (Nord Est, Lombardia, Emilia-Romagna, Centro, Sud)"
+      },
+      "operations": {
+        "responsabile": "Simone Garegnani",
+        "decorrenzaNomina": "2025-09-01",
+        "focus": [
+          "Coordinamento responsabili delivery",
+          "Integrazione Sales e Delivery",
+          "Presidio redditività progetti",
+          "Definizione e monitoraggio KPI"
+        ],
+        "team": {
+          "deliveryAssurance": {
+            "deliveryPM": "M. Policella",
+            "assurance": "L. Soro"
+          },
+          "competenceCenter": {
+            "customerUserInteraction": "J. Carlet",
+            "networkingSecurity": "M. Groppi",
+            "infrastructureTechnology": "E. Lerario"
+          }
+        }
+      }
+    },
+    "ccoGruppo": {
+      "responsabile": "Dott. Mattia Conti",
+      "responsabilita": "Supervisione attività commerciali Gruppo (Comtel, Novanext, NEC Italia)",
+      "team": {
+        "verticalSales": {
+          "hospitality": "P. Perelli",
+          "private": "G. Tantaro",
+          "pubblicaAmministrazione": "A. Adorno"
+        },
+        "carrierManagement": {
+          "tim": "L. Fezzardi",
+          "fastwebRetelit": "M. Covini"
+        },
+        "tenderManagement": "R. Sorrentino",
+        "regionalManager": {
+          "centroSud": "R. Sorrentino",
+          "nord": "G. Ghiglia"
+        }
+      }
+    }
+  },
+
+  "personale": {
+    "numeroDipendenti": {
+      "fine2024": 117,
+      "inizio2024": 107,
+      "variazione": 10
+    },
+    "composizione": {
+      "dirigentiQuadri": 20,
+      "impiegati": 92,
+      "operai": 5
+    },
+    "costoPersonale": {
+      "totale2024": 7218994,
+      "totale2023": 6004522,
+      "variazione": 1214472,
+      "variazionePercentuale": 20.2
+    },
+    "iniziative": [
+      "Programma Com.Talent per inserimento giovani diplomati",
+      "Rafforzamento rete commerciale con 5 nuovi Senior Account",
+      "Investimenti in personale tecnico per innovazione"
+    ]
+  },
+
+  "societa": {
+    "denominazione": "Com.Tel S.p.A.",
+    "formaGiuridica": "Società Per Azioni",
+    "sedeLegale": {
+      "indirizzo": "Via Vittor Pisani 10",
+      "cap": "20124",
+      "citta": "Milano",
+      "provincia": "MI",
+      "paese": "Italia"
+    },
+    "sediOperative": [
+      "Via Vittor Pisani 10, 20124 Milano",
+      "Via Passalacqua 10, 10122 Torino",
+      "Piazza Aldo Moro 10, 35129 Padova",
+      "Via Bianchini 47, 00142 Roma",
+      "Viale Mercanzia 5A, Argelato (BO)",
+      "Via A. La Marmora 34, 50121 Firenze",
+      "Centro Direzionale Isola F4, 80143 Napoli",
+      "Via Giotto 10, 90145 Palermo"
+    ],
+    "contatti": {
+      "telefono": "+39 02 2052781",
+      "numeroVerde": "+39 800 200 960",
+      "email": "info@comtelitalia.it",
+      "website": "www.comtelitalia.it",
+      "linkedin": "linkedin.com/company/comtel-italia",
+      "youtube": "youtube.com/@comtelitalia"
+    },
+    "datiLegali": {
+      "partitaIVA": "04367511005",
+      "codiceFiscale": "04367511005",
+      "numeroREA": "1712333",
+      "registroImprese": "Milano",
+      "capitaleSociale": 774521,
+      "capitaleSocialeVersato": 774521,
+      "numeroAzioni": 16400000,
+      "tipoAzioni": "Azioni ordinarie prive di valore nominale"
+    },
+    "governance": {
+      "amministratoreDelegato": "Dott. Fabio Daniele Maria Lazzerini",
+      "societaDiRevisione": "EY S.p.A.",
+      "controllataDa": {
+        "denominazione": "Nextaly S.r.l.",
+        "sede": "Via Vittor Pisani 10, Milano",
+        "codiceFiscale": "11376000961"
+      }
+    },
+    "certificazioni": [
+      "ISO 9001:2015",
+      "ISO 14001:2015",
+      "ISO 45001:2018",
+      "ISO 27001:2022"
+    ],
+    "durata": "Fino al 31 dicembre 2050",
+    "tagline": "#WEconnect",
+    "mission": "Uniamo persone, tecnologie e informazioni in un'unica infrastruttura dinamica e scalabile",
+    "settoreAttivita": "Installazione di impianti elettronici (compresa manutenzione e riparazione)"
+  },
+
+  "oggettoSociale": [
+    "Costruzione, commercializzazione, installazione e manutenzione apparecchiature telecomunicazioni",
+    "Prodotti elettrici, elettronici, meccanici ed elettromeccanici",
+    "Impianti di sicurezza e tecnologici",
+    "Sviluppo, commercializzazione e manutenzione software",
+    "Consulenza informatica e organizzativa",
+    "Progettazione sistemi informatici e reti",
+    "Formazione professionale e aziendale"
+  ],
+
+  "serviziPrincipali": [
+    "VoIP e Unified Communications",
+    "Session Border Controller e Media Gateway",
+    "Modern Work e Collaboration",
+    "Data Networking",
+    "Network Security e Cybersecurity",
+    "Cloud e IT Transformation",
+    "Infrastrutture Tecnologiche",
+    "Audio e Video Solutions"
+  ],
+
+  "partnerTecnologici": [
+    {
+      "nome": "Microsoft",
+      "tipo": "Partner strategico",
+      "aree": "Cloud, Modern Work, Collaboration"
+    },
+    {
+      "nome": "Huawei",
+      "tipo": "Partner tecnologico",
+      "aree": "Networking, Data Center, Transmission"
+    },
+    {
+      "nome": "HPE",
+      "tipo": "Partner tecnologico",
+      "aree": "Infrastructure, Server, Storage"
+    }
+  ],
+
+  "eventiRilevanti2025": [
+    {
+      "data": "2024-11-29",
+      "evento": "Riduzione capitale sociale ex art. 2446 c.c.",
+      "dettagli": "Assemblea straordinaria delibera riduzione capitale da €3.280.000 a €774.521 per copertura perdita 2023",
+      "impatto": "Ricostituzione patrimonio netto per ritorno in utile"
+    },
+    {
+      "data": "2024-12-16",
+      "evento": "Frazionamento azioni e aumento capitale",
+      "dettagli": "Eliminazione valore nominale, frazionamento a 16.400.000 azioni, delega CdA per aumento capitale fino a €5M per quotazione",
+      "impatto": "Preparazione per IPO su Euronext Growth Milan"
+    },
+    {
+      "data": "2025-02-19",
+      "evento": "Quotazione su Euronext Growth Milan (EGM)",
+      "dettagli": "Ammissione alle negoziazioni con raccolta €4.852.800 tramite emissione 2.022.000 nuove azioni a €2,40/azione",
+      "impatto": "Accesso mercato capitali, maggiore visibilità, liquidità azionaria"
+    },
+    {
+      "data": "2025-02-21",
+      "evento": "Acquisizione Novanext S.r.l.",
+      "dettagli": "Acquisizione 60% del capitale sociale per corrispettivo €1.905.366 finanziato con mezzi propri",
+      "impatto": "Espansione capacità operative e integrazione competenze tecniche"
+    },
+    {
+      "data": "2025-03-31",
+      "evento": "Accordo vincolante con NEC Europe LTD",
+      "dettagli": "Acquisizione 100% NEC Italia S.p.A. e NEC Nederland BV (inclusa branch Dubai)",
+      "impatto": "Rafforzamento posizionamento mercato, espansione internazionale, accesso tecnologie NEC"
+    }
+  ],
+
+  "highlights2024": [
+    "Ritorno all'utile con €148k vs perdita €4.4M nel 2023 (+€4.551k)",
+    "EBITDA ricorrente in crescita del 2.8% a €2.019k (margin 4.8%)",
+    "Riduzione indebitamento finanziario netto da €4.5M a €2.6M (-43%)",
+    "Miglioramento rapporto PFN/EBITDA da 2.3x a 1.3x",
+    "Crescita significativa Infrastructure Technology: +48.2%",
+    "Crescita Customer & User Interaction: +11.3%",
+    "Rafforzamento rete commerciale con 5 nuovi Senior Account",
+    "Investimenti programma Com.Talent per giovani talenti",
+    "Sviluppo progetto Intelligenza Artificiale per processi interni",
+    "ROI elevato al 31.8% (vs 29.7% nel 2023)",
+    "Generazione flussi di cassa operativi positivi: €3.3M"
+  ],
+
+  "criticita": [
+    "Giorni medi di pagamento elevati: 140 giorni (vs 130 nel 2023)",
+    "Debiti commerciali scaduti oltre 60 giorni: €2.080k (comunque in calo da €3.118k)",
+    "EBITDA in flessione senza considerare svalutazioni non ricorrenti",
+    "Marginalità operativa ancora contenuta (EBIT margin 2.6%)",
+    "Dipendenza da fornitori con necessità di gestione attenta del working capital"
+  ],
+
+  "opportunita2025": [
+    "Quotazione EGM apre accesso a nuovi capitali per crescita",
+    "Integrazione Novanext aumenta capacità e competenze",
+    "Acquisizione NEC porta tecnologie, clientela e presenza internazionale",
+    "Mercato ICT italiano in crescita +4.1% (fonte Assintel)",
+    "Fondi PNRR spingono domanda PA (+6%)",
+    "Settore Industria in crescita (+5.9%)",
+    "Espansione Infrastructure Technology ad alta marginalità"
+  ],
+
+  "prospettive2025": {
+    "obiettivi": [
+      "Consolidare risultati economici positivi del 2024",
+      "Crescita organica attraverso rafforzamento commerciale",
+      "Crescita inorganica via acquisizioni (Novanext, NEC)",
+      "Riduzione ulteriore scaduto fornitori verso azzeramento",
+      "Miglioramento marginalità grazie a mix prodotti",
+      "Stabilizzazione struttura finanziaria post-quotazione"
+    ],
+    "target": "Trend di crescita con risultato d'esercizio in utile e svalutazioni crediti contenute",
+    "rischi": [
+      "Incertezza macroeconomica (inflazione, tensioni geopolitiche)",
+      "Integrazione acquisizioni",
+      "Gestione crescita rapida del personale",
+      "Mantenimento marginalità in contesto competitivo"
+    ]
+  },
+
+  "noteContinuitaAziendale": {
+    "valutazione": "Gli amministratori ritengono di poter disporre di mezzi finanziari e patrimoniali sufficienti per la continuità aziendale",
+    "basi": [
+      "Business plan biennale 2025-2026 non evidenzia ulteriori fabbisogni di cassa",
+      "Utilizzo affidamenti bancari già in essere",
+      "Quotazione completata con raccolta €4.9M",
+      "Flussi di cassa operativi positivi",
+      "Miglioramento progressivo marginalità",
+      "Rapporto indebitamento/EBITDA in riduzione"
+    ],
+    "verifiche": "Bilancio redatto nel presupposto della continuità aziendale con parere revisore senza rilievi"
+  },
+
+  "noteImportanti": [
+    "I dati sono espressi in Euro salvo diversa indicazione",
+    "Il bilancio è stato approvato dal CdA il 31 marzo 2025",
+    "La società di revisione EY S.p.A. ha rilasciato parere positivo senza rilievi in data 14 aprile 2025",
+    "A seguito della riduzione capitale nel 2023, tutte le riserve disponibili sono state utilizzate per copertura perdite",
+    "La società non è più soggetta a direzione e coordinamento da novembre 2024",
+    "Esercizio 2023 caratterizzato da svalutazioni non ricorrenti di crediti finanziari per €5.130k"
+  ]
+}
