@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { tool } from '@openai/agents/realtime';
 import twilio from 'twilio';
+import { callbackService } from './db/services/callbacks.js';
+import { messageService } from './db/services/messages.js';
 
 /**
  * Tool: Get Company Information
@@ -119,6 +121,7 @@ export const getLocation = tool({
 /**
  * Tool: Schedule Callback
  * Records a callback request with caller details
+ * Now saves to PostgreSQL database
  */
 export const scheduleCallback = tool({
   name: 'schedule_callback',
@@ -135,31 +138,50 @@ export const scheduleCallback = tool({
     preferredTime: string;
     reason?: string | null;
   }) => {
-    const timestamp = new Date().toISOString();
-    const callbackId = `RIC-${Date.now()}`;
+    try {
+      // Save to database
+      const callback = await callbackService.create({
+        callerName: name,
+        callerPhone: phoneNumber,
+        preferredTime,
+        reason: reason || undefined,
+      });
 
-    // In production, this would save to a database or CRM system
-    console.log('Richiesta di Richiamata Registrata:', {
-      callbackId,
-      timestamp,
-      nome: name,
-      telefono: phoneNumber,
-      orarioPreferito: preferredTime,
-      motivo: reason || 'Non specificato'
-    });
+      console.log('📊 Callback saved to database:', callback.referenceNumber);
 
-    return JSON.stringify({
-      success: true,
-      callbackId,
-      message: `Richiamata pianificata per ${name} ${preferredTime}. La richiameremo al numero ${phoneNumber}.`,
-      numeroConferma: callbackId
-    });
+      return JSON.stringify({
+        success: true,
+        callbackId: callback.referenceNumber,
+        message: `Richiamata pianificata per ${name} ${preferredTime}. La richiameremo al numero ${phoneNumber}.`,
+        numeroConferma: callback.referenceNumber
+      });
+    } catch (error) {
+      // Fallback: if database fails, still provide service with console logging
+      console.error('⚠️  Database save failed, using fallback logging:', error);
+      const callbackId = `RIC-${Date.now()}`;
+
+      console.log('Richiesta di Richiamata Registrata (fallback):', {
+        callbackId,
+        nome: name,
+        telefono: phoneNumber,
+        orarioPreferito: preferredTime,
+        motivo: reason || 'Non specificato'
+      });
+
+      return JSON.stringify({
+        success: true,
+        callbackId,
+        message: `Richiamata pianificata per ${name} ${preferredTime}. La richiameremo al numero ${phoneNumber}.`,
+        numeroConferma: callbackId
+      });
+    }
   }
 });
 
 /**
  * Tool: Take Message
  * Records a message for a specific employee or department at Comtel Italia
+ * Now saves to PostgreSQL database
  */
 export const takeMessage = tool({
   name: 'take_message',
@@ -178,27 +200,46 @@ export const takeMessage = tool({
     message: string;
     urgent?: boolean | null;
   }) => {
-    const timestamp = new Date().toISOString();
-    const messageId = `MSG-${Date.now()}`;
+    try {
+      // Save to database
+      const savedMessage = await messageService.create({
+        recipientName,
+        callerName,
+        callerPhone,
+        content: message,
+        urgent: urgent || false,
+      });
 
-    // In production, this would be saved to a database or sent via email/SMS
-    console.log('Messaggio Registrato:', {
-      messageId,
-      timestamp,
-      destinatario: recipientName,
-      da: callerName,
-      telefono: callerPhone,
-      contenuto: message,
-      urgente: urgent,
-      priorita: urgent ? 'ALTA' : 'NORMALE'
-    });
+      console.log('📊 Message saved to database:', savedMessage.referenceNumber);
 
-    return JSON.stringify({
-      success: true,
-      messageId,
-      message: `Messaggio registrato per ${recipientName}. ${urgent ? 'È stato contrassegnato come urgente e verrà notificato immediatamente.' : 'Riceverà questo messaggio a breve.'}`,
-      numeroConferma: messageId
-    });
+      return JSON.stringify({
+        success: true,
+        messageId: savedMessage.referenceNumber,
+        message: `Messaggio registrato per ${recipientName}. ${urgent ? 'È stato contrassegnato come urgente e verrà notificato immediatamente.' : 'Riceverà questo messaggio a breve.'}`,
+        numeroConferma: savedMessage.referenceNumber
+      });
+    } catch (error) {
+      // Fallback: if database fails, still provide service with console logging
+      console.error('⚠️  Database save failed, using fallback logging:', error);
+      const messageId = `MSG-${Date.now()}`;
+
+      console.log('Messaggio Registrato (fallback):', {
+        messageId,
+        destinatario: recipientName,
+        da: callerName,
+        telefono: callerPhone,
+        contenuto: message,
+        urgente: urgent,
+        priorita: urgent ? 'ALTA' : 'NORMALE'
+      });
+
+      return JSON.stringify({
+        success: true,
+        messageId,
+        message: `Messaggio registrato per ${recipientName}. ${urgent ? 'È stato contrassegnato come urgente e verrà notificato immediatamente.' : 'Riceverà questo messaggio a breve.'}`,
+        numeroConferma: messageId
+      });
+    }
   }
 });
 
@@ -236,69 +277,56 @@ export const createTransferCallTool = (getCallSid: () => string | null) => {
       });
 
       try {
-        // Initialize Twilio client with extended timeout
-        // Extended timeout needed because updating a call in an active media stream
-        // requires Twilio to tear down the WebSocket connection first
+        // Initialize Twilio client
         const client = twilio(
           process.env.TWILIO_ACCOUNT_SID!,
-          process.env.TWILIO_AUTH_TOKEN!,
-          {
-            // Increase timeout to 90 seconds to allow Twilio time to process
-            // the update while the media stream is still connected
-            timeout: 90000  // 90 seconds (default is 30 seconds)
-          }
+          process.env.TWILIO_AUTH_TOKEN!
         );
 
-        // STEP 1: Verify the call still exists and is active
-        console.log('🔍 Verifica stato chiamata...');
-        let callInstance;
-        try {
-          callInstance = await client.calls(callSid).fetch();
-          console.log('📊 Stato chiamata:', {
-            status: callInstance.status,
-            direction: callInstance.direction,
-            duration: callInstance.duration || 0
-          });
-        } catch (fetchError: any) {
-          if (fetchError.status === 404 || fetchError.code === 20404) {
-            console.error('❌ Chiamata non trovata - probabilmente già terminata');
-            return JSON.stringify({
-              success: false,
-              error: 'La chiamata è già terminata. Non è possibile trasferire.',
-              reason: 'call_already_ended',
-              message: 'Dica alla persona che la chiamata si è disconnessa. Può offrire di prendere un messaggio o pianificare una richiamata.'
-            });
-          }
-          throw fetchError; // Re-throw other errors
-        }
+        // STEP 1: Get caller's phone number from database
+        console.log('📊 Recupero informazioni chiamata dal database...');
+        const { callService } = await import('./db/services/calls.js');
+        const callRecord = await callService.getBySid(callSid);
 
-        // Check if call is in a transferable state
-        const validStatuses = ['in-progress', 'ringing'];
-        if (!validStatuses.includes(callInstance.status)) {
-          console.error(`❌ Stato chiamata non valido per trasferimento: ${callInstance.status}`);
+        if (!callRecord || !callRecord.from) {
+          console.error('❌ Impossibile recuperare il numero del chiamante');
           return JSON.stringify({
             success: false,
-            error: `La chiamata non può essere trasferita. Stato attuale: ${callInstance.status}`,
-            reason: 'invalid_call_state',
-            message: 'La chiamata non è più attiva. Offra di prendere un messaggio o pianificare una richiamata.'
+            error: 'Impossibile recuperare le informazioni della chiamata',
+            message: 'Si è verificato un problema tecnico. Offra di prendere un messaggio.'
           });
         }
 
-        // STEP 2: Create TwiML to dial the target number
-        const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Dial>${targetNumber}</Dial>
-</Response>`;
+        const callerNumber = callRecord.from;
+        console.log('📞 Numero chiamante recuperato:', callerNumber);
 
-        // STEP 3: Update the active call with new TwiML
-        // This will cause Twilio to disconnect the media stream and transfer the call
-        console.log('📞 Esecuzione trasferimento...');
-        await client.calls(callSid).update({
-          twiml: twiml
+        // STEP 2: Create new outbound call from caller to target
+        // This avoids the <Connect><Stream> lock issue by creating a fresh call
+        console.log('📞 Creazione nuova chiamata:', {
+          from: callerNumber,
+          to: targetNumber
         });
 
-        console.log('✅ Chiamata trasferita con successo:', {
-          callSid,
+        const newCall = await client.calls.create({
+          from: callerNumber,
+          to: targetNumber,
+          url: `http://twimlets.com/forward?PhoneNumber=${encodeURIComponent(targetNumber)}`,
+          statusCallback: `https://${process.env.SERVER_URL}/call-status`,
+          statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+          timeout: 60
+        });
+
+        console.log('✅ Nuova chiamata creata:', newCall.sid);
+
+        // STEP 3: End the current media stream call
+        console.log('📞 Chiusura chiamata corrente...');
+        await client.calls(callSid).update({
+          status: 'completed'
+        });
+
+        console.log('✅ Trasferimento completato:', {
+          oldCallSid: callSid,
+          newCallSid: newCall.sid,
           numeroDestinazione: targetNumber,
           motivo: reason || 'Non specificato',
           timestamp: new Date().toISOString()
@@ -307,35 +335,27 @@ export const createTransferCallTool = (getCallSid: () => string | null) => {
         return JSON.stringify({
           success: true,
           message: `Chiamata trasferita con successo a ${targetNumber}`,
-          callSid,
+          oldCallSid: callSid,
+          newCallSid: newCall.sid,
           targetNumber,
           reason: reason || 'Non specificato'
         });
       } catch (error: any) {
-        // Handle specific Twilio errors
-        if (error.status === 404 || error.code === 20404) {
-          console.error('❌ Chiamata non trovata durante trasferimento - chiamata terminata');
-          return JSON.stringify({
-            success: false,
-            error: 'La chiamata si è disconnessa durante il trasferimento.',
-            reason: 'call_ended_during_transfer',
-            message: 'La chiamata si è disconnessa. Dica alla persona di richiamare se necessario.'
-          });
-        }
-
-        // Handle other errors
+        // Handle errors during transfer
         console.error('❌ Errore durante il trasferimento della chiamata:', {
           errorType: error.constructor.name,
           message: error.message,
           code: error.code,
-          status: error.status
+          status: error.status,
+          details: error
         });
 
+        // Provide user-friendly error message
         return JSON.stringify({
           success: false,
           error: 'Errore tecnico durante il trasferimento: ' + (error.message || 'Errore sconosciuto'),
           reason: 'technical_error',
-          message: 'Si è verificato un problema tecnico. Offra di prendere un messaggio o pianificare una richiamata.'
+          message: 'Si è verificato un problema tecnico con il trasferimento. Offra di prendere un messaggio o pianificare una richiamata.'
         });
       }
     }
@@ -356,7 +376,7 @@ export const comtelTools = [
 
 /**
  * Create all tools including transfer functionality
- * Note: Financial department transfers are handled via handoffs to Elena agent
+ * Note: Financial tools are imported separately and merged in agent.ts
  */
 export const createComtelTools = (getCallSid: () => string | null) => [
   ...comtelTools,

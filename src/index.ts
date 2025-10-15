@@ -5,8 +5,10 @@ import fastifyWebsocket from '@fastify/websocket';
 import { RealtimeSession } from '@openai/agents/realtime';
 import { TwilioRealtimeTransportLayer } from '@openai/agents-extensions';
 import { createMathiasAgent } from './agent.js';
-import { createElenaAgent } from './financial-agent.js';
 import type { WebSocket } from 'ws';
+import { callService } from './db/services/calls.js';
+import { transcriptService } from './db/services/transcripts.js';
+import { disconnectDatabase } from './db/index.js';
 
 // Environment variables validation
 const REQUIRED_ENV_VARS = ['OPENAI_API_KEY', 'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'SERVER_URL', 'PORT'];
@@ -59,6 +61,16 @@ fastify.get('/', async () => {
 });
 
 /**
+ * Helper: Extract phone number from SIP URI
+ * Example: "sip:+393516436038@sbc-mi-acs.comtelitalia.it;user=phone" → "+393516436038"
+ */
+function extractPhoneFromSip(sipUri: string | undefined): string {
+  if (!sipUri) return 'unknown';
+  const match = sipUri.match(/sip:(\+?\d+)@/);
+  return match ? match[1] : sipUri;
+}
+
+/**
  * Twilio incoming call webhook
  * POST /incoming-call
  * Returns TwiML to establish WebSocket connection
@@ -67,10 +79,22 @@ fastify.post('/incoming-call', async (_request, reply) => {
   console.log('📞 Incoming call received');
   console.log('Call details:', _request.body);
 
+  // Extract caller information from SIP URIs
+  const body = _request.body as any;
+  const fromSip = body.From || body.Caller;
+  const toSip = body.To || body.Called;
+  const from = extractPhoneFromSip(fromSip);
+  const to = extractPhoneFromSip(toSip);
+
+  console.log('📞 Extracted phone numbers:', { from, to });
+
+  // Pass caller info as query parameters to WebSocket
+  const streamUrl = `wss://${SERVER_URL}/media-stream?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
-    <Stream url="wss://${SERVER_URL}/media-stream" />
+    <Stream url="${streamUrl}" />
   </Connect>
 </Response>`;
 
@@ -88,7 +112,9 @@ fastify.register(async (fastifyInstance) => {
     const ws = connection as unknown as WebSocket;
 
     // Store Call SID for potential call transfers
+    // Caller info will be extracted from customParameters in the 'start' event
     let callSid: string | null = null;
+    let greetingTriggered = false;
 
     try {
       // Create Twilio transport layer immediately
@@ -103,22 +129,56 @@ fastify.register(async (fastifyInstance) => {
       });
 
       // Listen for transport events to log important information
-      transport.on('*', (event: any) => {
+      transport.on('*', async (event: any) => {
         if (event.type === 'twilio_message') {
           const twilioEvent = event.message.event;
           switch (twilioEvent) {
             case 'start':
               // Capture Call SID for potential call transfers
               callSid = event.message.start.callSid;
+              const streamSid = event.message.start.streamSid;
               console.log('🎬 Media stream started');
-              console.log('Stream SID:', event.message.start.streamSid);
+              console.log('Stream SID:', streamSid);
               console.log('Call SID:', callSid);
               console.log('📌 Call SID captured for transfer functionality');
+
+              // Save call to database
+              if (callSid) {
+                try {
+                  // Get caller info from customParameters (passed via Stream URL query params)
+                  const customParams = event.message.start.customParameters || {};
+                  const from = customParams.from?.toString() || 'unknown';
+                  const to = customParams.to?.toString() || undefined;
+
+                  console.log('📞 Caller info from customParameters:', { from, to });
+
+                  await callService.create({
+                    callSid,
+                    streamSid: streamSid || undefined,
+                    from,
+                    to,
+                  });
+                  console.log('📊 Call saved to database:', callSid, { from, to });
+                } catch (error) {
+                  console.error('⚠️  Failed to save call to database:', error);
+                }
+              }
               break;
             case 'stop':
               console.log('🛑 Media stream stopped');
               if (callSid) {
                 console.log(`📞 Call ${callSid} - media stream ended`);
+
+                // Update call status to completed
+                try {
+                  await callService.update(callSid, {
+                    status: 'completed',
+                    endedAt: new Date(),
+                  });
+                  console.log('📊 Call status updated to completed:', callSid);
+                } catch (error) {
+                  console.error('⚠️  Failed to update call status:', error);
+                }
               }
               break;
             case 'mark':
@@ -130,19 +190,24 @@ fastify.register(async (fastifyInstance) => {
         }
       });
 
-      // Create both agents - Elena first, then Mathias with handoff to Elena
-      const elenaAgent = createElenaAgent();
-      const mathiasAgent = createMathiasAgent(() => callSid, [elenaAgent]);
+      // Create Mathias agent with full capabilities (general + financial)
+      const mathiasAgent = createMathiasAgent(() => callSid);
 
-      console.log('👥 Multi-agent system initialized:');
-      console.log('   - Mathias (Receptionist) - Active');
-      console.log('   - Elena (Financial) - Handoff target');
+      console.log('🤖 Unified agent system initialized:');
+      console.log('   - Mathias (Receptionist + Financial Assistant)');
+      console.log('   - All-in-one: General inquiries + Financial data (with access code)');
 
       // Create Realtime session with Twilio transport
-      // Starting with Mathias, with Elena available for handoffs
+      // Enable user audio transcription via config
       const session = new RealtimeSession(mathiasAgent, {
         transport,
-        model: 'gpt-realtime'
+        model: 'gpt-realtime',
+        config: {
+          inputAudioTranscription: {
+            model: 'gpt-4o-transcribe',
+            language: 'it'  // Italian language hint for better accuracy
+          }
+        }
       });
 
       // Add error handler to session to prevent crashes
@@ -162,12 +227,187 @@ fastify.register(async (fastifyInstance) => {
         apiKey: OPENAI_API_KEY
       });
       console.log('✅ Connected to OpenAI Realtime API');
-      console.log('🔄 Handoff system ready: Mathias ↔ Elena');
+      console.log('📝 Transcript logging enabled (gpt-4o-transcribe, Italian)');
+      console.log('🔐 Financial data protection: Access code verification enabled');
 
-      // Trigger initial greeting from the agent
-      // This causes Mathias to introduce himself instead of waiting for the caller
-      session.sendMessage('chiamata in arrivo');
-      console.log('🎙️  Initial greeting triggered');
+      // Listen for all session events to capture transcripts
+      console.log('📝 Setting up transcript event listeners');
+
+      (session as any).on('*', async (event: any) => {
+        // Log ALL events for debugging (with filtering for noise)
+        const eventTypesToLog = [
+          'conversation.item.input_audio_transcription.completed',
+          'conversation.item.created',
+          'response.text.delta',
+          'response.audio_transcript.delta',
+          'response.audio_transcript.done',
+          'response.done'
+        ];
+
+        if (eventTypesToLog.includes(event.type)) {
+          console.log(`🔊 Session event received: ${event.type}`, {
+            hasCallSid: !!callSid,
+            callSid: callSid || 'not-set-yet'
+          });
+        }
+
+        if (!callSid) {
+          // Log warning if transcript events arrive before callSid is set
+          if (event.type.includes('transcript') || event.type.includes('conversation')) {
+            console.warn('⚠️  Transcript event received but callSid not set yet:', event.type);
+          }
+          return; // Only log if we have a callSid
+        }
+
+        try {
+          // Handle user audio transcription completed
+          if (event.type === 'conversation.item.input_audio_transcription.completed') {
+            const transcript = event.transcript;
+            console.log('📝 User transcription completed:', {
+              transcript: transcript?.substring(0, 50),
+              callSid
+            });
+
+            if (transcript) {
+              const saved = await transcriptService.save({
+                callSid,
+                speaker: 'user',
+                text: transcript,
+                eventType: 'input_audio_transcription.completed',
+              });
+
+              if (saved) {
+                console.log('✅ User transcript saved to database');
+              } else {
+                console.error('❌ Failed to save user transcript to database');
+              }
+            }
+          }
+
+          // Handle conversation items (agent responses, user messages)
+          if (event.type === 'conversation.item.created') {
+            const item = event.item;
+            console.log('📝 Conversation item created:', {
+              role: item.role,
+              contentTypes: item.content?.map((c: any) => c.type),
+              callSid
+            });
+
+            // Agent text responses
+            if (item.role === 'assistant' && item.content) {
+              for (const content of item.content) {
+                if (content.type === 'text' && content.text) {
+                  console.log('📝 Saving agent text response:', content.text.substring(0, 50));
+                  const saved = await transcriptService.save({
+                    callSid,
+                    speaker: 'agent',
+                    agentName: 'Mathias',
+                    text: content.text,
+                    eventType: 'conversation.item.created',
+                  });
+
+                  if (saved) {
+                    console.log('✅ Agent transcript saved to database');
+                  } else {
+                    console.error('❌ Failed to save agent transcript to database');
+                  }
+                }
+              }
+            }
+
+            // User messages (text-based)
+            if (item.role === 'user' && item.content) {
+              for (const content of item.content) {
+                if (content.type === 'input_text' && content.text) {
+                  console.log('📝 Saving user text message:', content.text.substring(0, 50));
+                  const saved = await transcriptService.save({
+                    callSid,
+                    speaker: 'user',
+                    text: content.text,
+                    eventType: 'conversation.item.created',
+                  });
+
+                  if (saved) {
+                    console.log('✅ User message saved to database');
+                  } else {
+                    console.error('❌ Failed to save user message to database');
+                  }
+                }
+              }
+            }
+          }
+
+          // Handle response audio transcript delta (streaming transcripts)
+          if (event.type === 'response.audio_transcript.delta') {
+            console.log('🔊 Audio transcript delta received:', {
+              delta: event.delta?.substring(0, 30),
+              itemId: event.item_id
+            });
+          }
+
+          // Handle response audio transcript done (complete transcripts)
+          if (event.type === 'response.audio_transcript.done') {
+            console.log('🔊 Audio transcript done:', {
+              transcript: event.transcript?.substring(0, 50),
+              itemId: event.item_id
+            });
+
+            if (event.transcript) {
+              const saved = await transcriptService.save({
+                callSid,
+                speaker: 'agent',
+                agentName: 'Mathias',
+                text: event.transcript,
+                eventType: 'response.audio_transcript.done',
+              });
+
+              if (saved) {
+                console.log('✅ Agent audio transcript saved to database');
+              } else {
+                console.error('❌ Failed to save agent audio transcript to database');
+              }
+            }
+          }
+        } catch (error) {
+          console.error('⚠️  Failed to process transcript event:', {
+            eventType: event.type,
+            error: error instanceof Error ? error.message : error,
+            stack: error instanceof Error ? error.stack : undefined
+          });
+        }
+      });
+
+      // Trigger greeting after media stream starts (once only)
+      // Wait for the transport 'start' event before triggering greeting
+      const checkAndGreet = setInterval(() => {
+        if (callSid && !greetingTriggered) {
+          greetingTriggered = true;
+
+          // Use low-level transport events to avoid interruption issues
+          session.transport.sendEvent({
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'user',
+              content: [{
+                type: 'input_text',
+                text: 'Saluta il cliente'  // Italian: "Greet the customer"
+              }]
+            }
+          });
+          session.transport.sendEvent({
+            type: 'response.create'
+          });
+
+          console.log('🎙️  Initial greeting triggered (after media stream started)');
+          clearInterval(checkAndGreet);
+        }
+      }, 100);
+
+      // Cleanup interval after 5 seconds if greeting hasn't triggered
+      setTimeout(() => {
+        clearInterval(checkAndGreet);
+      }, 5000);
 
       // Handle WebSocket errors
       ws.on('error', (error: Error) => {
@@ -200,9 +440,10 @@ const start = async () => {
     console.log(`  - Health Check: GET https://${SERVER_URL}/`);
     console.log(`  - Incoming Call: POST https://${SERVER_URL}/incoming-call`);
     console.log(`  - Media Stream: WSS wss://${SERVER_URL}/media-stream`);
-    console.log('\n🤖 Multi-Agent System:');
-    console.log('   - Mathias (Receptionist) - Primary agent');
-    console.log('   - Elena (Financial) - Handoff target for financial queries');
+    console.log('\n🤖 Unified Agent System:');
+    console.log('   - Mathias (All-in-One Agent)');
+    console.log('   - Capabilities: General inquiries + Financial data');
+    console.log('   - Security: Access code verification for financial data');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     console.log('💡 Configure Twilio webhook:');
     console.log(`   https://${SERVER_URL}/incoming-call\n`);
@@ -220,6 +461,10 @@ const shutdown = async () => {
   try {
     await fastify.close();
     console.log('✅ Server closed gracefully');
+
+    // Disconnect from database
+    await disconnectDatabase();
+
     process.exit(0);
   } catch (err) {
     console.error('❌ Error during shutdown:', err);

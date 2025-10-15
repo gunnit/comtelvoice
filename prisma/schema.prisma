@@ -1,0 +1,125 @@
+// Comtel Voice Agent Database Schema
+// Tracks calls, callback requests, messages, and agent handoffs
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Call records - tracks all incoming calls
+model Call {
+  id            String      @id @default(cuid())
+  callSid       String      @unique // Twilio Call SID
+  streamSid     String?     // Twilio Stream SID
+  from          String      // Caller phone number
+  to            String?     // Called number (Twilio number)
+  status        String      @default("in-progress") // in-progress, completed, failed
+  startedAt     DateTime    @default(now())
+  endedAt       DateTime?
+  duration      Int?        // Duration in seconds
+
+  // Relationships
+  callbacks     Callback[]
+  messages      Message[]
+  transcripts   Transcript[]
+
+  @@index([callSid])
+  @@index([startedAt])
+  @@map("calls")
+}
+
+// Callback requests - when customers ask to be called back
+model Callback {
+  id              String      @id @default(cuid())
+  referenceNumber String      @unique // RIC-xxxxx format
+
+  // Caller information
+  callerName      String
+  callerPhone     String
+  preferredTime   String      // Free text: "domani mattina", "questo pomeriggio"
+  reason          String?     // Why they want to be called back
+
+  // Status tracking
+  status          String      @default("pending") // pending, scheduled, completed, cancelled
+  priority        String      @default("normal") // normal, high, urgent
+  assignedTo      String?     // Employee assigned to make the callback
+
+  // Timestamps
+  createdAt       DateTime    @default(now())
+  scheduledFor    DateTime?   // When it's scheduled
+  completedAt     DateTime?   // When it was completed
+
+  // Related call
+  callId          String?
+  call            Call?       @relation(fields: [callId], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([referenceNumber])
+  @@map("callbacks")
+}
+
+// Messages - messages left for employees or departments
+model Message {
+  id              String      @id @default(cuid())
+  referenceNumber String      @unique // MSG-xxxxx format
+
+  // Message details
+  recipientName   String      // Person or department the message is for
+  callerName      String      // Who left the message
+  callerPhone     String
+  content         String      // The actual message
+  urgent          Boolean     @default(false)
+
+  // Status tracking
+  status          String      @default("unread") // unread, read, forwarded, archived
+  priority        String      @default("normal") // normal, high, urgent
+  forwardedTo     String?     // Email/phone where it was forwarded
+
+  // Timestamps
+  createdAt       DateTime    @default(now())
+  readAt          DateTime?   // When it was marked as read
+  forwardedAt     DateTime?   // When it was forwarded
+
+  // Related call
+  callId          String?
+  call            Call?       @relation(fields: [callId], references: [id])
+
+  @@index([status])
+  @@index([recipientName])
+  @@index([createdAt])
+  @@index([referenceNumber])
+  @@map("messages")
+}
+
+// Transcripts - full conversation history for each call
+model Transcript {
+  id              String      @id @default(cuid())
+
+  // Conversation details
+  speaker         String      // user, agent, system
+  agentName       String?     // Mathias, Elena (null for user/system)
+  text            String      // Transcript text
+
+  // Sequencing and timing
+  sequenceNumber  Int         // Order in conversation
+  timestamp       DateTime    @default(now())
+
+  // Optional metadata
+  confidence      Float?      // Transcription confidence (0.0-1.0)
+  duration        Float?      // Audio duration in seconds
+  eventType       String?     // conversation.item.created, transcription.completed, etc.
+
+  // Related call
+  callId          String
+  call            Call        @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId, sequenceNumber])
+  @@index([speaker])
+  @@index([timestamp])
+  @@map("transcripts")
+}
