@@ -98,6 +98,12 @@ fastify.post('/incoming-call', async (_request, reply) => {
   </Connect>
 </Response>`;
 
+  // Log the exact TwiML and WebSocket URL being sent to Twilio
+  console.log('🔗 WebSocket URL:', streamUrl);
+  console.log('📄 TwiML being sent to Twilio:');
+  console.log(twiml);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
   reply.type('text/xml').send(twiml);
 });
 
