@@ -88,18 +88,23 @@ fastify.post('/incoming-call', async (_request, reply) => {
 
   console.log('📞 Extracted phone numbers:', { from, to });
 
-  // Pass caller info as query parameters to WebSocket
-  const streamUrl = `wss://${SERVER_URL}/media-stream?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  // Twilio Stream does NOT support query parameters in the URL
+  // Use Parameter elements to pass custom data instead
+  const streamUrl = `wss://${SERVER_URL}/media-stream`;
 
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
-    <Stream url="${streamUrl}" />
+    <Stream url="${streamUrl}">
+      <Parameter name="from" value="${from}" />
+      <Parameter name="to" value="${to}" />
+    </Stream>
   </Connect>
 </Response>`;
 
   // Log the exact TwiML and WebSocket URL being sent to Twilio
   console.log('🔗 WebSocket URL:', streamUrl);
+  console.log('📞 Passing parameters: from=' + from + ', to=' + to);
   console.log('📄 TwiML being sent to Twilio:');
   console.log(twiml);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
