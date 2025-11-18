@@ -3,6 +3,7 @@ import { tool } from '@openai/agents/realtime';
 import twilio from 'twilio';
 import { callbackService } from './db/services/callbacks.js';
 import { messageService } from './db/services/messages.js';
+import type { CallState } from './agent.js';
 
 /**
  * Tool: Get Company Information
@@ -245,10 +246,11 @@ export const takeMessage = tool({
 
 /**
  * Tool: Transfer Call
- * Transfers the active call to another phone number
- * Requires a function to get the current Call SID
+ * Transfers the active call to another phone number using TwiML update method
+ * Compatible with SIP trunk setup and active WebSocket streams
+ * @param getCallState - Function to retrieve current call state from memory
  */
-export const createTransferCallTool = (getCallSid: () => string | null) => {
+export const createTransferCallTool = (getCallState: () => CallState) => {
   return tool({
     name: 'transfer_call',
     description: 'Trasferisce la chiamata attiva a un numero di telefono specifico (reparto tecnico, ufficio, dipendente)',
@@ -260,7 +262,9 @@ export const createTransferCallTool = (getCallSid: () => string | null) => {
       targetNumber: string;
       reason?: string | null;
     }) => {
-      const callSid = getCallSid();
+      // Get call state from memory (not database)
+      const callState = getCallState();
+      const { callSid, callerNumber, twilioNumber } = callState;
 
       if (!callSid) {
         return JSON.stringify({
@@ -271,6 +275,8 @@ export const createTransferCallTool = (getCallSid: () => string | null) => {
 
       console.log('🔄 Tentativo di trasferimento chiamata:', {
         callSid,
+        caller: callerNumber || 'unknown',
+        twilioNumber: twilioNumber || 'unknown',
         numeroDestinazione: targetNumber,
         motivo: reason || 'Non specificato',
         timestamp: new Date().toISOString()
@@ -283,62 +289,35 @@ export const createTransferCallTool = (getCallSid: () => string | null) => {
           process.env.TWILIO_AUTH_TOKEN!
         );
 
-        // STEP 1: Get caller's phone number from database
-        console.log('📊 Recupero informazioni chiamata dal database...');
-        const { callService } = await import('./db/services/calls.js');
-        const callRecord = await callService.getBySid(callSid);
+        // Use TwiML update method to transfer the call
+        // This works with active WebSocket streams and SIP trunks
+        const transferTwiML = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial timeout="30">${targetNumber}</Dial>
+</Response>`;
 
-        if (!callRecord || !callRecord.from) {
-          console.error('❌ Impossibile recuperare il numero del chiamante');
-          return JSON.stringify({
-            success: false,
-            error: 'Impossibile recuperare le informazioni della chiamata',
-            message: 'Si è verificato un problema tecnico. Offra di prendere un messaggio.'
-          });
-        }
+        console.log('📞 Aggiornamento chiamata con TwiML di trasferimento...');
+        console.log('TwiML:', transferTwiML);
 
-        const callerNumber = callRecord.from;
-        console.log('📞 Numero chiamante recuperato:', callerNumber);
-
-        // STEP 2: Create new outbound call from caller to target
-        // This avoids the <Connect><Stream> lock issue by creating a fresh call
-        console.log('📞 Creazione nuova chiamata:', {
-          from: callerNumber,
-          to: targetNumber
-        });
-
-        const newCall = await client.calls.create({
-          from: callerNumber,
-          to: targetNumber,
-          url: `http://twimlets.com/forward?PhoneNumber=${encodeURIComponent(targetNumber)}`,
-          statusCallback: `https://${process.env.SERVER_URL}/call-status`,
-          statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-          timeout: 60
-        });
-
-        console.log('✅ Nuova chiamata creata:', newCall.sid);
-
-        // STEP 3: End the current media stream call
-        console.log('📞 Chiusura chiamata corrente...');
         await client.calls(callSid).update({
-          status: 'completed'
+          twiml: transferTwiML
         });
 
         console.log('✅ Trasferimento completato:', {
-          oldCallSid: callSid,
-          newCallSid: newCall.sid,
+          callSid,
           numeroDestinazione: targetNumber,
           motivo: reason || 'Non specificato',
+          method: 'twiml_update',
           timestamp: new Date().toISOString()
         });
 
         return JSON.stringify({
           success: true,
           message: `Chiamata trasferita con successo a ${targetNumber}`,
-          oldCallSid: callSid,
-          newCallSid: newCall.sid,
+          callSid,
           targetNumber,
-          reason: reason || 'Non specificato'
+          reason: reason || 'Non specificato',
+          method: 'twiml_update'
         });
       } catch (error: any) {
         // Handle errors during transfer
@@ -347,7 +326,7 @@ export const createTransferCallTool = (getCallSid: () => string | null) => {
           message: error.message,
           code: error.code,
           status: error.status,
-          details: error
+          moreInfo: error.moreInfo
         });
 
         // Provide user-friendly error message
@@ -377,8 +356,9 @@ export const comtelTools = [
 /**
  * Create all tools including transfer functionality
  * Note: Financial tools are imported separately and merged in agent.ts
+ * @param getCallState - Function to retrieve current call state from memory
  */
-export const createComtelTools = (getCallSid: () => string | null) => [
+export const createComtelTools = (getCallState: () => CallState) => [
   ...comtelTools,
-  createTransferCallTool(getCallSid)
+  createTransferCallTool(getCallState)
 ];

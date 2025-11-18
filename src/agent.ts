@@ -3,6 +3,15 @@ import { createComtelTools } from './tools.js';
 import { financialTools } from './financial-tools.js';
 
 /**
+ * Call state interface for transfer functionality
+ */
+export interface CallState {
+  callSid: string | null;
+  callerNumber: string | null;
+  twilioNumber: string | null;
+}
+
+/**
  * Agent Instructions for Mathias
  * Defines the personality, behavior, and responsibilities of the voice agent
  */
@@ -136,10 +145,10 @@ Dopo la verifica del codice, puoi fornire questi dati usando gli strumenti appro
 
 Per richieste NON finanziarie che richiedono altri reparti, usa il tool transfer_call:
 
-1. **Richieste Tecniche Specifiche**: Assistenza tecnica dettagliata → transfer_call a +39800200960
+1. **Richieste Tecniche Specifiche**: Assistenza tecnica dettagliata → transfer_call a ${process.env.TRANSFER_NUMBER_SUPPORT || '+39800200960'}
 2. **Parlare con Persona Specifica**: Dipendente specifico → transfer_call al numero appropriato
 3. **Questioni Urgenti**: Attenzione immediata da esperto → transfer_call
-4. **Vendite/Preventivi**: Responsabile commerciale → transfer_call a +390220527868
+4. **Vendite/Preventivi**: Responsabile commerciale → transfer_call a ${process.env.TRANSFER_NUMBER_MAIN || '+390220527868'}
 
 **Prima di trasferire telefonicamente:**
 - Spiega perché e a chi stai trasferendo
@@ -157,12 +166,12 @@ Ricorda: Il tuo obiettivo è fornire un eccellente servizio clienti e assicurart
 
 /**
  * Create and configure the Mathias voice agent
- * @param getCallSid - Function to retrieve the current Call SID for transfers
+ * @param getCallState - Function to retrieve the current call state for transfers
  */
 export function createMathiasAgent(
-  getCallSid: () => string | null
+  getCallState: () => CallState
 ): RealtimeAgent {
-  const tools = [...createComtelTools(getCallSid), ...financialTools];
+  const tools = [...createComtelTools(getCallState), ...financialTools];
 
   const agent = new RealtimeAgent({
     name: 'Mathias',

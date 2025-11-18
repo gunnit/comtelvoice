@@ -122,9 +122,11 @@ fastify.register(async (fastifyInstance) => {
 
     const ws = connection as unknown as WebSocket;
 
-    // Store Call SID for potential call transfers
+    // Store Call SID and caller info for potential call transfers
     // Caller info will be extracted from customParameters in the 'start' event
     let callSid: string | null = null;
+    let callerNumber: string | null = null;  // Incoming caller's phone number
+    let twilioNumber: string | null = null;  // Twilio SIP number that received the call
     let greetingTriggered = false;
 
     try {
@@ -145,31 +147,31 @@ fastify.register(async (fastifyInstance) => {
           const twilioEvent = event.message.event;
           switch (twilioEvent) {
             case 'start':
-              // Capture Call SID for potential call transfers
+              // Capture Call SID and caller info for potential call transfers
               callSid = event.message.start.callSid;
               const streamSid = event.message.start.streamSid;
+
+              // Extract caller info from customParameters
+              const customParams = event.message.start.customParameters || {};
+              callerNumber = customParams.from?.toString() || null;
+              twilioNumber = customParams.to?.toString() || null;
+
               console.log('🎬 Media stream started');
               console.log('Stream SID:', streamSid);
               console.log('Call SID:', callSid);
-              console.log('📌 Call SID captured for transfer functionality');
+              console.log('📞 Caller info:', { from: callerNumber, to: twilioNumber });
+              console.log('📌 Call state captured in memory for transfer functionality');
 
-              // Save call to database
+              // Save call to database (but transfer won't depend on this)
               if (callSid) {
                 try {
-                  // Get caller info from customParameters (passed via Stream URL query params)
-                  const customParams = event.message.start.customParameters || {};
-                  const from = customParams.from?.toString() || 'unknown';
-                  const to = customParams.to?.toString() || undefined;
-
-                  console.log('📞 Caller info from customParameters:', { from, to });
-
                   await callService.create({
                     callSid,
                     streamSid: streamSid || undefined,
-                    from,
-                    to,
+                    from: callerNumber || 'unknown',
+                    to: twilioNumber || undefined,
                   });
-                  console.log('📊 Call saved to database:', callSid, { from, to });
+                  console.log('📊 Call saved to database:', callSid);
                 } catch (error) {
                   console.error('⚠️  Failed to save call to database:', error);
                 }
@@ -202,7 +204,12 @@ fastify.register(async (fastifyInstance) => {
       });
 
       // Create Mathias agent with full capabilities (general + financial)
-      const mathiasAgent = createMathiasAgent(() => callSid);
+      // Pass call state getter function for transfer functionality
+      const mathiasAgent = createMathiasAgent(() => ({
+        callSid,
+        callerNumber,
+        twilioNumber
+      }));
 
       console.log('🤖 Unified agent system initialized:');
       console.log('   - Mathias (Receptionist + Financial Assistant)');
