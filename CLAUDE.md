@@ -66,12 +66,13 @@ Phone Call → Twilio → POST /incoming-call (returns TwiML)
    - Turn detection: Server VAD with 0.5 threshold, 500ms silence duration
    - **Critical**: Access code protection for financial data queries
 
-3. **src/tools.ts**: General receptionist tools (5 tools):
+3. **src/tools.ts**: General receptionist tools (6 tools):
    - `get_company_info`: Real Comtel Italia details (services, contact info, partners)
    - `get_business_hours`: Italian business hours (CET/CEST timezone)
    - `get_location`: Milan office address (Via Vittor Pisani, 10, Milano)
    - `schedule_callback`: Records callback requests → **saves to database** (callbacks table)
    - `take_message`: Takes messages for employees → **saves to database** (messages table)
+   - `transfer_call`: Transfers active calls by closing WebSocket and updating TwiML → **Important**: Must close session first
 
 4. **src/financial-tools.ts**: Financial data tools (5 tools):
    - `verify_access_code`: Verifies caller authorization (required before accessing financial data)
@@ -97,6 +98,7 @@ Phone Call → Twilio → POST /incoming-call (returns TwiML)
 - **Error Handling**: Both transport and session have error handlers to prevent crashes. Response cancellation errors are expected and suppressed.
 - **Database**: PostgreSQL via Prisma ORM. App gracefully degrades to console logging if database is unavailable.
 - **Financial Data Security**: Access codes stored in `financial-tools.ts` (use environment variables in production)
+- **Call Transfer Architecture**: Uses a 3-step process: (1) Close OpenAI session with `session.close()`, (2) Wait 200ms for WebSocket closure, (3) Update call with `<Dial>` TwiML via Twilio REST API. This is necessary because calls in `<Connect><Stream>` cannot be updated while WebSocket is active.
 
 ### OpenAI Agents API Reference
 
@@ -138,6 +140,8 @@ Required in `.env`:
 - `SERVER_URL`: Public URL without protocol (e.g., `comtel-voice-agent.onrender.com`)
 - `PORT`: Server port (default: 3000)
 - `DATABASE_URL`: PostgreSQL connection string (e.g., `postgresql://user:pass@localhost:5432/comtel_voice`)
+- `TRANSFER_NUMBER_MAIN`: Main transfer number (sales/general), e.g., `+390220527868`
+- `TRANSFER_NUMBER_SUPPORT`: Technical support transfer number, e.g., `+39800200960`
 
 ## Database Schema (Prisma)
 
@@ -190,6 +194,24 @@ config: {
 }
 ```
 **Important**: Do NOT try to configure transcription via `sendMessage()` - it must be set during session initialization.
+
+### Implementing Call Transfers
+Call transfers require special handling due to WebSocket Media Streams:
+
+**Architecture:** The transfer tool receives a `CallState` object containing:
+- `callSid`: Twilio Call SID
+- `callerNumber`: Incoming caller's phone number
+- `twilioNumber`: Twilio/SIP number that received the call
+- `session`: RealtimeSession reference (for closing)
+
+**Transfer Process (3 steps):**
+1. Close the OpenAI session: `await session.close()`
+2. Wait for clean WebSocket closure: `await new Promise(resolve => setTimeout(resolve, 200))`
+3. Update call with transfer TwiML: `await client.calls(callSid).update({ twiml: '<Response><Dial>...</Dial></Response>' })`
+
+**Why this is necessary:** Calls in `<Connect><Stream>` are locked by Twilio and cannot be updated via REST API while the WebSocket is active. Closing the session first releases the call.
+
+**Transfer numbers:** Use environment variables `TRANSFER_NUMBER_MAIN` and `TRANSFER_NUMBER_SUPPORT` in agent instructions for easy configuration.
 
 ## Testing
 

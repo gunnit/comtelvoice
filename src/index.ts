@@ -23,6 +23,11 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 const SERVER_URL = process.env.SERVER_URL;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
 
+// Transfer state management
+// Stores pending transfer requests: callSid → targetNumber
+// When a call's WebSocket stream closes, we check this Map to determine if it should be transferred
+const pendingTransfers = new Map<string, string>();
+
 // Initialize Fastify
 const fastify = Fastify({
   logger: {
@@ -55,6 +60,7 @@ fastify.get('/', async () => {
     endpoints: {
       health: 'GET /',
       incomingCall: 'POST /incoming-call',
+      transferComplete: 'POST /transfer-complete',
       mediaStream: 'WebSocket /media-stream'
     }
   };
@@ -91,10 +97,11 @@ fastify.post('/incoming-call', async (_request, reply) => {
   // Twilio Stream does NOT support query parameters in the URL
   // Use Parameter elements to pass custom data instead
   const streamUrl = `wss://${SERVER_URL}/media-stream`;
+  const transferCompleteUrl = `https://${SERVER_URL}/transfer-complete`;
 
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Connect>
+  <Connect action="${transferCompleteUrl}">
     <Stream url="${streamUrl}">
       <Parameter name="from" value="${from}" />
       <Parameter name="to" value="${to}" />
@@ -110,6 +117,48 @@ fastify.post('/incoming-call', async (_request, reply) => {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   reply.type('text/xml').send(twiml);
+});
+
+/**
+ * Transfer completion handler
+ * POST /transfer-complete
+ * Called by Twilio after the WebSocket stream ends (via action attribute on <Connect>)
+ * Checks if a transfer is pending and returns appropriate TwiML
+ */
+fastify.post('/transfer-complete', async (request, reply) => {
+  const body = request.body as any;
+  const callSid = body.CallSid;
+
+  console.log('🔄 Transfer completion check for call:', callSid);
+
+  // Check if there's a pending transfer for this call
+  const targetNumber = pendingTransfers.get(callSid);
+
+  if (targetNumber) {
+    // Transfer is pending - return Dial TwiML
+    console.log('✅ Pending transfer found, dialing:', targetNumber);
+
+    // Clean up the pending transfer
+    pendingTransfers.delete(callSid);
+
+    const transferTwiML = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial timeout="30">${targetNumber}</Dial>
+</Response>`;
+
+    console.log('📞 Returning transfer TwiML:', transferTwiML);
+    return reply.type('text/xml').send(transferTwiML);
+  } else {
+    // No transfer pending - just hang up
+    console.log('📴 No transfer pending, hanging up call');
+
+    const hangupTwiML = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Hangup/>
+</Response>`;
+
+    return reply.type('text/xml').send(hangupTwiML);
+  }
 });
 
 /**
@@ -211,7 +260,10 @@ fastify.register(async (fastifyInstance) => {
         callSid,
         callerNumber,
         twilioNumber,
-        session: realtimeSession
+        session: realtimeSession,
+        storePendingTransfer: (sid: string, target: string) => {
+          pendingTransfers.set(sid, target);
+        }
       }));
 
       console.log('🤖 Unified agent system initialized:');
@@ -463,6 +515,7 @@ const start = async () => {
     console.log('\n📋 Available Endpoints:');
     console.log(`  - Health Check: GET https://${SERVER_URL}/`);
     console.log(`  - Incoming Call: POST https://${SERVER_URL}/incoming-call`);
+    console.log(`  - Transfer Complete: POST https://${SERVER_URL}/transfer-complete`);
     console.log(`  - Media Stream: WSS wss://${SERVER_URL}/media-stream`);
     console.log('\n🤖 Unified Agent System:');
     console.log('   - Mathias (All-in-One Agent)');

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { tool } from '@openai/agents/realtime';
-import twilio from 'twilio';
 import { callbackService } from './db/services/callbacks.js';
 import { messageService } from './db/services/messages.js';
 import type { CallState } from './agent.js';
@@ -264,7 +263,7 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
     }) => {
       // Get call state from memory (not database)
       const callState = getCallState();
-      const { callSid, callerNumber, twilioNumber, session } = callState;
+      const { callSid, callerNumber, twilioNumber, session, storePendingTransfer } = callState;
 
       if (!callSid) {
         return JSON.stringify({
@@ -283,67 +282,46 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
       });
 
       try {
-        // STEP 1: Close AI session (close WebSocket)
-        // This releases the call from Media Stream lock
+        // STEP 1: Store pending transfer
+        // This will be checked by /transfer-complete endpoint after stream ends
+        storePendingTransfer(callSid, targetNumber);
+        console.log('✅ Transfer pending stored for call:', callSid, '→', targetNumber);
+
+        // STEP 2: Close AI session (close WebSocket)
+        // This will trigger Twilio to call the action URL (/transfer-complete)
         if (session) {
           console.log('🔌 Chiusura sessione OpenAI (WebSocket)...');
           try {
             await session.close();
-            console.log('✅ Sessione OpenAI chiusa');
+            console.log('✅ Sessione OpenAI chiusa - Twilio chiamerà /transfer-complete');
           } catch (closeError) {
             console.log('⚠️  Errore durante chiusura sessione (ignorato):', closeError);
           }
-
-          // Wait for WebSocket to close cleanly
-          await new Promise(resolve => setTimeout(resolve, 200));
         } else {
           console.log('⚠️  Nessuna sessione disponibile per la chiusura');
         }
 
-        // STEP 2: Initialize Twilio client
-        const client = twilio(
-          process.env.TWILIO_ACCOUNT_SID!,
-          process.env.TWILIO_AUTH_TOKEN!
-        );
-
-        // STEP 3: Update call with transfer TwiML
-        // Now that WebSocket is closed, this should work
-        const transferTwiML = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Dial timeout="30">${targetNumber}</Dial>
-</Response>`;
-
-        console.log('📞 Aggiornamento chiamata con TwiML di trasferimento...');
-        console.log('TwiML:', transferTwiML);
-
-        await client.calls(callSid).update({
-          twiml: transferTwiML
-        });
-
-        console.log('✅ Trasferimento completato:', {
+        console.log('✅ Trasferimento iniziato:', {
           callSid,
           numeroDestinazione: targetNumber,
           motivo: reason || 'Non specificato',
-          method: 'twiml_update',
+          method: 'action_url_pattern',
           timestamp: new Date().toISOString()
         });
 
         return JSON.stringify({
           success: true,
-          message: `Chiamata trasferita con successo a ${targetNumber}`,
+          message: `Chiamata in trasferimento a ${targetNumber}`,
           callSid,
           targetNumber,
           reason: reason || 'Non specificato',
-          method: 'twiml_update'
+          method: 'action_url_pattern'
         });
       } catch (error: any) {
         // Handle errors during transfer
         console.error('❌ Errore durante il trasferimento della chiamata:', {
           errorType: error.constructor.name,
-          message: error.message,
-          code: error.code,
-          status: error.status,
-          moreInfo: error.moreInfo
+          message: error.message
         });
 
         // Provide user-friendly error message

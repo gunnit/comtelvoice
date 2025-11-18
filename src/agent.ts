@@ -10,6 +10,7 @@ export interface CallState {
   callerNumber: string | null;
   twilioNumber: string | null;
   session: RealtimeSession | null;  // Session reference for disconnecting during transfer
+  storePendingTransfer: (callSid: string, targetNumber: string) => void;  // Function to store pending transfer
 }
 
 /**
