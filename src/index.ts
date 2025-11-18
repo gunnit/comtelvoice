@@ -190,6 +190,7 @@ fastify.register(async (fastifyInstance) => {
     // Store Call SID and caller info for potential call transfers
     // Caller info will be extracted from customParameters in the 'start' event
     let callSid: string | null = null;
+    let streamSid: string | null = null;  // Stream SID for sending stop event
     let callerNumber: string | null = null;  // Incoming caller's phone number
     let twilioNumber: string | null = null;  // Twilio SIP number that received the call
     let greetingTriggered = false;
@@ -214,7 +215,7 @@ fastify.register(async (fastifyInstance) => {
             case 'start':
               // Capture Call SID and caller info for potential call transfers
               callSid = event.message.start.callSid;
-              const streamSid = event.message.start.streamSid;
+              streamSid = event.message.start.streamSid;
 
               // Extract caller info from customParameters
               const customParams = event.message.start.customParameters || {};
@@ -225,7 +226,7 @@ fastify.register(async (fastifyInstance) => {
               console.log('Stream SID:', streamSid);
               console.log('Call SID:', callSid);
               console.log('📞 Caller info:', { from: callerNumber, to: twilioNumber });
-              console.log('📌 Call state captured in memory for transfer functionality');
+              console.log('📌 Call state captured in memory for transfer functionality (including streamSid)');
 
               // Save call to database (but transfer won't depend on this)
               if (callSid) {
@@ -276,6 +277,7 @@ fastify.register(async (fastifyInstance) => {
         callSid,
         callerNumber,
         twilioNumber,
+        streamSid,
         session: realtimeSession,
         storePendingTransfer: (sid: string, target: string) => {
           pendingTransfers.set(sid, target);

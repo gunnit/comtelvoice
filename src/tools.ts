@@ -263,12 +263,19 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
     }) => {
       // Get call state from memory (not database)
       const callState = getCallState();
-      const { callSid, callerNumber, twilioNumber, session, storePendingTransfer } = callState;
+      const { callSid, callerNumber, twilioNumber, streamSid, session, storePendingTransfer } = callState;
 
       if (!callSid) {
         return JSON.stringify({
           success: false,
           error: 'Call SID non disponibile. Impossibile trasferire la chiamata.'
+        });
+      }
+
+      if (!streamSid) {
+        return JSON.stringify({
+          success: false,
+          error: 'Stream SID non disponibile. Impossibile trasferire la chiamata.'
         });
       }
 
@@ -294,11 +301,35 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
         console.log('   Target:', targetNumber);
         console.log('   Reason:', reason || 'Non specificato');
 
-        // STEP 2: Close AI session to trigger Twilio's action URL callback
-        // When WebSocket closes, Twilio will automatically call /transfer-complete
-        if (session) {
+        // STEP 2: Send explicit stop to Twilio Media Stream
+        // This makes Twilio immediately recognize stream end
+        if (session && streamSid) {
+          console.log('🛑 Sending STOP event to Twilio Media Stream...');
+          console.log('   Stream SID:', streamSid);
+
+          try {
+            // Access underlying Twilio WebSocket and send stop message
+            const twilioWs = (session.transport as any).twilioWebSocket;
+            if (twilioWs && twilioWs.readyState === 1) { // 1 = OPEN
+              const stopMessage = JSON.stringify({
+                event: 'stop',
+                streamSid: streamSid
+              });
+              twilioWs.send(stopMessage);
+              console.log('✅ Stop event sent to Twilio');
+
+              // Brief wait for Twilio to process stop
+              await new Promise(resolve => setTimeout(resolve, 200));
+            } else {
+              console.log('⚠️  WebSocket not in OPEN state, skipping stop event');
+            }
+          } catch (stopError) {
+            console.log('⚠️  Error sending stop event (continuing anyway):', stopError);
+          }
+
+          // STEP 3: Close OpenAI session
           console.log('🔌 Closing OpenAI session...');
-          console.log('   This will trigger Twilio to call: /transfer-complete');
+          console.log('   Twilio should immediately call /transfer-complete');
 
           try {
             await session.close();
@@ -307,7 +338,7 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
             console.log('⚠️  Error closing session (ignoring):', closeError);
           }
         } else {
-          console.log('⚠️  No session available to close');
+          console.log('⚠️  No session or streamSid available');
         }
 
         console.log('✅ Transfer initiated successfully');

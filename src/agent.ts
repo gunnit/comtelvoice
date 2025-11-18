@@ -9,6 +9,7 @@ export interface CallState {
   callSid: string | null;
   callerNumber: string | null;
   twilioNumber: string | null;
+  streamSid: string | null;  // Stream SID for sending stop event to Twilio
   session: RealtimeSession | null;  // Session reference for disconnecting during transfer
   storePendingTransfer: (callSid: string, targetNumber: string) => void;  // Function to store pending transfer
 }
