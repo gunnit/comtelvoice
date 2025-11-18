@@ -1,4 +1,4 @@
-import { RealtimeAgent } from '@openai/agents/realtime';
+import { RealtimeAgent, RealtimeSession } from '@openai/agents/realtime';
 import { createComtelTools } from './tools.js';
 import { financialTools } from './financial-tools.js';
 
@@ -9,6 +9,7 @@ export interface CallState {
   callSid: string | null;
   callerNumber: string | null;
   twilioNumber: string | null;
+  session: RealtimeSession | null;  // Session reference for disconnecting during transfer
 }
 
 /**

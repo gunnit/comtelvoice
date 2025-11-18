@@ -205,10 +205,13 @@ fastify.register(async (fastifyInstance) => {
 
       // Create Mathias agent with full capabilities (general + financial)
       // Pass call state getter function for transfer functionality
+      // Note: session will be set after it's created below
+      let realtimeSession: any = null;
       const mathiasAgent = createMathiasAgent(() => ({
         callSid,
         callerNumber,
-        twilioNumber
+        twilioNumber,
+        session: realtimeSession
       }));
 
       console.log('🤖 Unified agent system initialized:');
@@ -227,6 +230,9 @@ fastify.register(async (fastifyInstance) => {
           }
         }
       });
+
+      // Make session available to transfer tool via callState
+      realtimeSession = session;
 
       // Add error handler to session to prevent crashes
       session.on('error', (error: any) => {

@@ -264,7 +264,7 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
     }) => {
       // Get call state from memory (not database)
       const callState = getCallState();
-      const { callSid, callerNumber, twilioNumber } = callState;
+      const { callSid, callerNumber, twilioNumber, session } = callState;
 
       if (!callSid) {
         return JSON.stringify({
@@ -283,14 +283,31 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
       });
 
       try {
-        // Initialize Twilio client
+        // STEP 1: Close AI session (close WebSocket)
+        // This releases the call from Media Stream lock
+        if (session) {
+          console.log('🔌 Chiusura sessione OpenAI (WebSocket)...');
+          try {
+            await session.close();
+            console.log('✅ Sessione OpenAI chiusa');
+          } catch (closeError) {
+            console.log('⚠️  Errore durante chiusura sessione (ignorato):', closeError);
+          }
+
+          // Wait for WebSocket to close cleanly
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } else {
+          console.log('⚠️  Nessuna sessione disponibile per la chiusura');
+        }
+
+        // STEP 2: Initialize Twilio client
         const client = twilio(
           process.env.TWILIO_ACCOUNT_SID!,
           process.env.TWILIO_AUTH_TOKEN!
         );
 
-        // Use TwiML update method to transfer the call
-        // This works with active WebSocket streams and SIP trunks
+        // STEP 3: Update call with transfer TwiML
+        // Now that WebSocket is closed, this should work
         const transferTwiML = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Dial timeout="30">${targetNumber}</Dial>
