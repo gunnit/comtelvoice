@@ -128,15 +128,26 @@ fastify.post('/incoming-call', async (_request, reply) => {
 fastify.post('/transfer-complete', async (request, reply) => {
   const body = request.body as any;
   const callSid = body.CallSid;
+  const callStatus = body.CallStatus;
+  const callDuration = body.CallDuration;
 
-  console.log('🔄 Transfer completion check for call:', callSid);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🔄 /transfer-complete endpoint called');
+  console.log('⏰ Timestamp:', new Date().toISOString());
+  console.log('📞 Call SID:', callSid);
+  console.log('📊 Call Status:', callStatus);
+  console.log('⏱️  Call Duration:', callDuration, 'seconds');
+  console.log('📋 All Twilio parameters:', JSON.stringify(body, null, 2));
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Check if there's a pending transfer for this call
   const targetNumber = pendingTransfers.get(callSid);
 
   if (targetNumber) {
     // Transfer is pending - return Dial TwiML
-    console.log('✅ Pending transfer found, dialing:', targetNumber);
+    console.log('✅ Pending transfer found!');
+    console.log('📞 Target number:', targetNumber);
+    console.log('🔄 Initiating transfer via <Dial>...');
 
     // Clean up the pending transfer
     pendingTransfers.delete(callSid);
@@ -146,17 +157,22 @@ fastify.post('/transfer-complete', async (request, reply) => {
   <Dial timeout="30">${targetNumber}</Dial>
 </Response>`;
 
-    console.log('📞 Returning transfer TwiML:', transferTwiML);
+    console.log('📤 Returning transfer TwiML to Twilio:');
+    console.log(transferTwiML);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     return reply.type('text/xml').send(transferTwiML);
   } else {
     // No transfer pending - just hang up
-    console.log('📴 No transfer pending, hanging up call');
+    console.log('⚠️  No transfer pending for this call');
+    console.log('📴 Hanging up call');
 
     const hangupTwiML = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Hangup/>
 </Response>`;
 
+    console.log('📤 Returning hangup TwiML to Twilio');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     return reply.type('text/xml').send(hangupTwiML);
   }
 });
