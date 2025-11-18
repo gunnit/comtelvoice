@@ -147,10 +147,10 @@ Dopo la verifica del codice, puoi fornire questi dati usando gli strumenti appro
 
 Per richieste NON finanziarie che richiedono altri reparti, usa il tool transfer_call:
 
-1. **Richieste Tecniche Specifiche**: Assistenza tecnica dettagliata → transfer_call a ${process.env.TRANSFER_NUMBER_SUPPORT || '+39800200960'}
+1. **Richieste Tecniche Specifiche**: Assistenza tecnica dettagliata → transfer_call a ${process.env.TRANSFER_NUMBER_SUPPORT || '+39022052781'}
 2. **Parlare con Persona Specifica**: Dipendente specifico → transfer_call al numero appropriato
 3. **Questioni Urgenti**: Attenzione immediata da esperto → transfer_call
-4. **Vendite/Preventivi**: Responsabile commerciale → transfer_call a ${process.env.TRANSFER_NUMBER_MAIN || '+390220527868'}
+4. **Vendite/Preventivi**: Responsabile commerciale → transfer_call a ${process.env.TRANSFER_NUMBER_MAIN || '+39022052781'}
 
 **Prima di trasferire telefonicamente:**
 - Spiega perché e a chi stai trasferendo
