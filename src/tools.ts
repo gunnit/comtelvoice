@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { tool } from '@openai/agents/realtime';
+import twilio from 'twilio';
 import { callbackService } from './db/services/callbacks.js';
 import { messageService } from './db/services/messages.js';
 import type { CallState } from './agent.js';
@@ -283,39 +284,57 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
 
       try {
         // STEP 1: Store pending transfer
-        // This will be checked by /transfer-complete endpoint after stream ends
+        // This will be checked by /transfer-complete endpoint
         storePendingTransfer(callSid, targetNumber);
         console.log('✅ Transfer pending stored for call:', callSid, '→', targetNumber);
 
-        // STEP 2: Close AI session (close WebSocket)
-        // This will trigger Twilio to call the action URL (/transfer-complete)
+        // STEP 2: Use REST API to redirect call immediately
+        // This forces instant transfer without waiting for action URL
+        const client = twilio(
+          process.env.TWILIO_ACCOUNT_SID!,
+          process.env.TWILIO_AUTH_TOKEN!
+        );
+
+        const SERVER_URL = process.env.SERVER_URL;
+        const transferUrl = `https://${SERVER_URL}/transfer-complete`;
+
+        console.log('📞 Redirecting call immediately via REST API to:', transferUrl);
+
+        // Redirect the call - this happens instantly
+        await client.calls(callSid).update({
+          url: transferUrl,
+          method: 'POST'
+        });
+
+        console.log('✅ Call redirected successfully - transfer will happen immediately');
+
+        // STEP 3: Close AI session (close WebSocket)
+        // This cleanup happens after redirect is initiated
         if (session) {
           console.log('🔌 Chiusura sessione OpenAI (WebSocket)...');
           try {
             await session.close();
-            console.log('✅ Sessione OpenAI chiusa - Twilio chiamerà /transfer-complete');
+            console.log('✅ Sessione OpenAI chiusa');
           } catch (closeError) {
             console.log('⚠️  Errore durante chiusura sessione (ignorato):', closeError);
           }
-        } else {
-          console.log('⚠️  Nessuna sessione disponibile per la chiusura');
         }
 
-        console.log('✅ Trasferimento iniziato:', {
+        console.log('✅ Trasferimento completato:', {
           callSid,
           numeroDestinazione: targetNumber,
           motivo: reason || 'Non specificato',
-          method: 'action_url_pattern',
+          method: 'rest_api_redirect',
           timestamp: new Date().toISOString()
         });
 
         return JSON.stringify({
           success: true,
-          message: `Chiamata in trasferimento a ${targetNumber}`,
+          message: `Chiamata trasferita con successo a ${targetNumber}`,
           callSid,
           targetNumber,
           reason: reason || 'Non specificato',
-          method: 'action_url_pattern'
+          method: 'rest_api_redirect'
         });
       } catch (error: any) {
         // Handle errors during transfer
