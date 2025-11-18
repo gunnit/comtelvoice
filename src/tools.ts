@@ -301,44 +301,39 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
         console.log('   Target:', targetNumber);
         console.log('   Reason:', reason || 'Non specificato');
 
-        // STEP 2: Send explicit stop to Twilio Media Stream
-        // This makes Twilio immediately recognize stream end
-        if (session && streamSid) {
-          console.log('🛑 Sending STOP event to Twilio Media Stream...');
+        // STEP 2: Close session to trigger Twilio action URL callback
+        // The SDK handles WebSocket closure properly - no manual intervention needed
+        if (session) {
+          console.log('🔌 Closing session...');
           console.log('   Stream SID:', streamSid);
+          console.log('   Transport status before close:', (session.transport as any).status);
 
-          try {
-            // Access underlying Twilio WebSocket and send stop message
-            const twilioWs = (session.transport as any).twilioWebSocket;
-            if (twilioWs && twilioWs.readyState === 1) { // 1 = OPEN
-              const stopMessage = JSON.stringify({
-                event: 'stop',
-                streamSid: streamSid
-              });
-              twilioWs.send(stopMessage);
-              console.log('✅ Stop event sent to Twilio');
-
-              // Brief wait for Twilio to process stop
-              await new Promise(resolve => setTimeout(resolve, 200));
-            } else {
-              console.log('⚠️  WebSocket not in OPEN state, skipping stop event');
-            }
-          } catch (stopError) {
-            console.log('⚠️  Error sending stop event (continuing anyway):', stopError);
-          }
-
-          // STEP 3: Close OpenAI session
-          console.log('🔌 Closing OpenAI session...');
-          console.log('   Twilio should immediately call /transfer-complete');
+          const closeStartTime = Date.now();
 
           try {
             await session.close();
-            console.log('✅ OpenAI session closed successfully');
-          } catch (closeError) {
-            console.log('⚠️  Error closing session (ignoring):', closeError);
+
+            const closeEndTime = Date.now();
+            const closeDuration = closeEndTime - closeStartTime;
+
+            console.log('✅ Session closed successfully');
+            console.log('   Close duration:', closeDuration, 'ms');
+            console.log('   Transport status after close:', (session.transport as any).status);
+            console.log('   Twilio should now call /transfer-complete immediately');
+          } catch (closeError: any) {
+            console.error('❌ Error closing session:', {
+              name: closeError.name,
+              message: closeError.message,
+              stack: closeError.stack
+            });
+            throw closeError; // Re-throw to see if this prevents transfer
           }
         } else {
-          console.log('⚠️  No session or streamSid available');
+          console.log('⚠️  No session available to close');
+          return JSON.stringify({
+            success: false,
+            error: 'Session non disponibile per il trasferimento'
+          });
         }
 
         console.log('✅ Transfer initiated successfully');
