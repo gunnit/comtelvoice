@@ -288,28 +288,8 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
         storePendingTransfer(callSid, targetNumber);
         console.log('✅ Transfer pending stored for call:', callSid, '→', targetNumber);
 
-        // STEP 2: Use REST API to redirect call immediately
-        // This forces instant transfer without waiting for action URL
-        const client = twilio(
-          process.env.TWILIO_ACCOUNT_SID!,
-          process.env.TWILIO_AUTH_TOKEN!
-        );
-
-        const SERVER_URL = process.env.SERVER_URL;
-        const transferUrl = `https://${SERVER_URL}/transfer-complete`;
-
-        console.log('📞 Redirecting call immediately via REST API to:', transferUrl);
-
-        // Redirect the call - this happens instantly
-        await client.calls(callSid).update({
-          url: transferUrl,
-          method: 'POST'
-        });
-
-        console.log('✅ Call redirected successfully - transfer will happen immediately');
-
-        // STEP 3: Close AI session (close WebSocket)
-        // This cleanup happens after redirect is initiated
+        // STEP 2: Close AI session FIRST (release WebSocket lock)
+        // This is critical - call cannot be updated while WebSocket is active
         if (session) {
           console.log('🔌 Chiusura sessione OpenAI (WebSocket)...');
           try {
@@ -318,13 +298,40 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
           } catch (closeError) {
             console.log('⚠️  Errore durante chiusura sessione (ignorato):', closeError);
           }
+
+          // Wait for WebSocket to fully close and release the call
+          console.log('⏳ Waiting 1 second for WebSocket cleanup...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log('✅ WebSocket cleanup complete');
+        } else {
+          console.log('⚠️  Nessuna sessione disponibile per la chiusura');
         }
+
+        // STEP 3: Use REST API to redirect call immediately
+        // Now that WebSocket is closed, this should work
+        const client = twilio(
+          process.env.TWILIO_ACCOUNT_SID!,
+          process.env.TWILIO_AUTH_TOKEN!
+        );
+
+        const SERVER_URL = process.env.SERVER_URL;
+        const transferUrl = `https://${SERVER_URL}/transfer-complete`;
+
+        console.log('📞 Redirecting call via REST API to:', transferUrl);
+
+        // Redirect the call - should work now that WebSocket is closed
+        await client.calls(callSid).update({
+          url: transferUrl,
+          method: 'POST'
+        });
+
+        console.log('✅ Call redirected successfully');
 
         console.log('✅ Trasferimento completato:', {
           callSid,
           numeroDestinazione: targetNumber,
           motivo: reason || 'Non specificato',
-          method: 'rest_api_redirect',
+          method: 'close_then_redirect',
           timestamp: new Date().toISOString()
         });
 
@@ -334,7 +341,7 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
           callSid,
           targetNumber,
           reason: reason || 'Non specificato',
-          method: 'rest_api_redirect'
+          method: 'close_then_redirect'
         });
       } catch (error: any) {
         // Handle errors during transfer
