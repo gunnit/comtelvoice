@@ -61,6 +61,7 @@ fastify.get('/', async () => {
       health: 'GET /',
       incomingCall: 'POST /incoming-call',
       transferComplete: 'POST /transfer-complete',
+      transferStatus: 'POST /transfer-status',
       mediaStream: 'WebSocket /media-stream'
     }
   };
@@ -144,20 +145,27 @@ fastify.post('/transfer-complete', async (request, reply) => {
   const targetNumber = pendingTransfers.get(callSid);
 
   if (targetNumber) {
-    // Transfer is pending - return Dial TwiML
+    // Transfer is pending - return SIP REFER TwiML to Comtel PBX
     console.log('✅ Pending transfer found!');
     console.log('📞 Target number:', targetNumber);
-    console.log('🔄 Initiating transfer via <Dial>...');
+    console.log('🔄 Initiating transfer via SIP REFER to Comtel BroadWorks...');
 
     // Clean up the pending transfer
     pendingTransfers.delete(callSid);
 
+    // Use SIP REFER to send call back to Comtel PBX
+    // Comtel BroadWorks will handle the PSTN routing
+    const sipUri = `sip:${targetNumber}@sbc-mi-acs.comtelitalia.it`;
     const transferTwiML = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="30">${targetNumber}</Dial>
+  <Refer action="/transfer-status">
+    <Sip>${sipUri}</Sip>
+  </Refer>
 </Response>`;
 
-    console.log('📤 Returning transfer TwiML to Twilio:');
+    console.log('📤 Returning SIP REFER TwiML to Twilio:');
+    console.log('   SIP URI:', sipUri);
+    console.log('   Target PBX: sbc-mi-acs.comtelitalia.it');
     console.log(transferTwiML);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     return reply.type('text/xml').send(transferTwiML);
@@ -175,6 +183,30 @@ fastify.post('/transfer-complete', async (request, reply) => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     return reply.type('text/xml').send(hangupTwiML);
   }
+});
+
+/**
+ * Transfer status handler
+ * POST /transfer-status
+ * Called by Twilio to report the status of a SIP REFER transfer
+ */
+fastify.post('/transfer-status', async (request, reply) => {
+  const body = request.body as any;
+  const callSid = body.CallSid;
+  const referStatus = body.ReferStatus;
+  const referTo = body.ReferTo;
+
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('📞 SIP REFER Transfer Status Update');
+  console.log('⏰ Timestamp:', new Date().toISOString());
+  console.log('📞 Call SID:', callSid);
+  console.log('📊 REFER Status:', referStatus);
+  console.log('📍 REFER To:', referTo);
+  console.log('📋 All Twilio parameters:', JSON.stringify(body, null, 2));
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  // Return empty TwiML - transfer is being handled by Comtel PBX
+  return reply.type('text/xml').send('<Response></Response>');
 });
 
 /**
