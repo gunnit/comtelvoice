@@ -60,6 +60,8 @@ fastify.get('/', async () => {
     endpoints: {
       health: 'GET /',
       incomingCall: 'POST /incoming-call',
+      outboundCall: 'POST /outbound-call (mode: simple|agent)',
+      callStatus: 'POST /call-status',
       transferComplete: 'POST /transfer-complete',
       transferStatus: 'POST /transfer-status',
       mediaStream: 'WebSocket /media-stream'
@@ -121,6 +123,112 @@ fastify.post('/incoming-call', async (_request, reply) => {
 });
 
 /**
+ * Outbound call webhook
+ * POST /outbound-call
+ * Returns TwiML for outbound calls initiated by the system
+ *
+ * Query parameters:
+ * - mode: 'simple' (default) for basic audio, 'agent' to connect to Mathias
+ */
+fastify.post('/outbound-call', async (request, reply) => {
+  console.log('📞 Outbound call webhook triggered');
+  console.log('Request details:', request.body);
+
+  const body = request.body as any;
+  const query = request.query as any;
+  const mode = query.mode || 'simple';
+
+  const callSid = body.CallSid;
+  const from = body.From;
+  const to = body.To;
+  const callStatus = body.CallStatus;
+
+  console.log('📞 Outbound call details:', { callSid, from, to, callStatus, mode });
+
+  let twiml: string;
+
+  if (mode === 'agent') {
+    // Connect to Mathias agent via WebSocket
+    const streamUrl = `wss://${SERVER_URL}/media-stream`;
+    const transferCompleteUrl = `https://${SERVER_URL}/transfer-complete`;
+
+    twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say language="it-IT">Un momento prego.</Say>
+  <Connect action="${transferCompleteUrl}">
+    <Stream url="${streamUrl}">
+      <Parameter name="from" value="${from}" />
+      <Parameter name="to" value="${to}" />
+      <Parameter name="outbound" value="true" />
+    </Stream>
+  </Connect>
+</Response>`;
+
+    console.log('🤖 Connecting outbound call to Mathias agent');
+  } else {
+    // Simple test mode - play a message and hang up
+    twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say language="it-IT" voice="alice">
+    Ciao! Questo è un messaggio di test da Comtel Italia.
+    Il sistema di chiamate in uscita funziona correttamente.
+    Grazie e arrivederci!
+  </Say>
+  <Pause length="1"/>
+  <Hangup/>
+</Response>`;
+
+    console.log('💬 Playing simple test message');
+  }
+
+  console.log('📄 TwiML response:');
+  console.log(twiml);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  reply.type('text/xml').send(twiml);
+});
+
+/**
+ * Call status callback
+ * POST /call-status
+ * Receives status updates for outbound calls
+ * Events: initiated, ringing, answered, completed
+ */
+fastify.post('/call-status', async (request, reply) => {
+  const body = request.body as any;
+  const callSid = body.CallSid;
+  const callStatus = body.CallStatus;
+  const timestamp = body.Timestamp;
+  const duration = body.CallDuration;
+
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('📊 Call Status Update');
+  console.log('⏰ Time:', timestamp);
+  console.log('📞 Call SID:', callSid);
+  console.log('📈 Status:', callStatus);
+  if (duration) {
+    console.log('⏱️  Duration:', duration, 'seconds');
+  }
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  // Update database if call tracking is enabled
+  try {
+    if (callStatus === 'completed') {
+      await callService.update(callSid, {
+        status: 'completed',
+        endedAt: new Date(),
+        duration: parseInt(duration || '0', 10)
+      });
+      console.log('✅ Call status updated in database');
+    }
+  } catch (error) {
+    console.error('⚠️  Failed to update call status in database:', error);
+  }
+
+  return reply.send({ received: true });
+});
+
+/**
  * Transfer completion handler
  * POST /transfer-complete
  * Called by Twilio after the WebSocket stream ends (via action attribute on <Connect>)
@@ -145,27 +253,28 @@ fastify.post('/transfer-complete', async (request, reply) => {
   const targetNumber = pendingTransfers.get(callSid);
 
   if (targetNumber) {
-    // Transfer is pending - return SIP REFER TwiML to Comtel PBX
+    // Transfer is pending - return BYOC Dial TwiML
     console.log('✅ Pending transfer found!');
     console.log('📞 Target number:', targetNumber);
-    console.log('🔄 Initiating transfer via SIP REFER to Comtel BroadWorks...');
+    console.log('🔄 Initiating transfer via BYOC Dial...');
 
     // Clean up the pending transfer
     pendingTransfers.delete(callSid);
 
-    // Use SIP REFER to send call back to Comtel PBX
-    // Comtel BroadWorks will handle the PSTN routing
-    const sipUri = `sip:${targetNumber}@sbc-mi-acs.comtelitalia.it:5361;transport=tls`;
+    // Use BYOC Dial to route call through Comtel's carrier connection
+    // BYOC Trunk SID: BY4860934ef5d140355b71ab233b88dba2
+    const byocTrunkSid = 'BY4860934ef5d140355b71ab233b88dba2';
     const transferTwiML = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Refer action="/transfer-status">
-    <Sip>${sipUri}</Sip>
-  </Refer>
+  <Dial timeout="30">
+    <Number byoc="${byocTrunkSid}">${targetNumber}</Number>
+  </Dial>
 </Response>`;
 
-    console.log('📤 Returning SIP REFER TwiML to Twilio:');
-    console.log('   SIP URI:', sipUri);
-    console.log('   Target PBX: sbc-mi-acs.comtelitalia.it');
+    console.log('📤 Returning BYOC Dial TwiML to Twilio:');
+    console.log('   BYOC Trunk SID:', byocTrunkSid);
+    console.log('   Target number:', targetNumber);
+    console.log('   Routing via: Comtel carrier (ct-sbc-pisani)');
     console.log(transferTwiML);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     return reply.type('text/xml').send(transferTwiML);
