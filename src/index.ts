@@ -155,7 +155,7 @@ fastify.post('/transfer-complete', async (request, reply) => {
 
     // Use SIP REFER to send call back to Comtel PBX
     // Comtel BroadWorks will handle the PSTN routing
-    const sipUri = `sip:${targetNumber}@sbc-mi-acs.comtelitalia.it`;
+    const sipUri = `sip:${targetNumber}@sbc-mi-acs.comtelitalia.it:5361;transport=tls`;
     const transferTwiML = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Refer action="/transfer-status">
