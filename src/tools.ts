@@ -301,32 +301,65 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
         console.log('   Target:', targetNumber);
         console.log('   Reason:', reason || 'Non specificato');
 
-        // STEP 2: Close session to trigger Twilio action URL callback
-        // The SDK handles WebSocket closure properly - no manual intervention needed
+        // STEP 2: Close WebSocket to trigger Twilio action URL callback
+        // We need to access the underlying Twilio WebSocket directly because
+        // session.close() doesn't properly close the WebSocket (completes in 0ms)
         if (session) {
-          console.log('🔌 Closing session...');
+          console.log('🔌 Preparing to close WebSocket for transfer...');
           console.log('   Stream SID:', streamSid);
           console.log('   Transport status before close:', (session.transport as any).status);
 
           const closeStartTime = Date.now();
 
           try {
-            await session.close();
+            // Access the underlying Twilio WebSocket
+            const ws = (session.transport as any).twilioWebSocket;
 
-            const closeEndTime = Date.now();
-            const closeDuration = closeEndTime - closeStartTime;
+            if (ws && ws.readyState === 1) { // 1 = WebSocket.OPEN
+              console.log('🔌 Closing underlying Twilio WebSocket...');
+              console.log('   WebSocket readyState before close:', ws.readyState);
 
-            console.log('✅ Session closed successfully');
-            console.log('   Close duration:', closeDuration, 'ms');
-            console.log('   Transport status after close:', (session.transport as any).status);
-            console.log('   Twilio should now call /transfer-complete immediately');
+              // Close with proper code and reason
+              // Code 1000 = Normal Closure
+              ws.close(1000, 'Call transfer initiated');
+
+              // Wait for close confirmation (with timeout)
+              await new Promise<void>((resolve) => {
+                const closeTimeout = setTimeout(() => {
+                  console.warn('⚠️  WebSocket close timeout (3 seconds) - proceeding anyway');
+                  resolve();
+                }, 3000);
+
+                ws.once('close', () => {
+                  clearTimeout(closeTimeout);
+                  const closeEndTime = Date.now();
+                  const closeDuration = closeEndTime - closeStartTime;
+
+                  console.log('✅ WebSocket closed successfully');
+                  console.log('   Close duration:', closeDuration, 'ms');
+                  console.log('   WebSocket readyState after close:', ws.readyState);
+                  resolve();
+                });
+              });
+
+              console.log('   Transport status after close:', (session.transport as any).status);
+              console.log('   Twilio should now call /transfer-complete within 1-2 seconds');
+            } else {
+              console.warn('⚠️  WebSocket not available or not open');
+              console.log('   WebSocket exists:', !!ws);
+              console.log('   WebSocket readyState:', ws?.readyState);
+
+              // Fallback: try session.close() anyway
+              console.log('🔄 Attempting fallback with session.close()...');
+              await session.close();
+            }
           } catch (closeError: any) {
-            console.error('❌ Error closing session:', {
+            console.error('❌ Error closing WebSocket:', {
               name: closeError.name,
               message: closeError.message,
               stack: closeError.stack
             });
-            throw closeError; // Re-throw to see if this prevents transfer
+            throw closeError;
           }
         } else {
           console.log('⚠️  No session available to close');

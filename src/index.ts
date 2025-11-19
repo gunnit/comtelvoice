@@ -242,6 +242,37 @@ fastify.register(async (fastifyInstance) => {
                   console.error('⚠️  Failed to save call to database:', error);
                 }
               }
+
+              // Trigger greeting after 'start' event (event-driven, not polling)
+              // Wait 150ms for OpenAI session to stabilize before sending greeting
+              if (!greetingTriggered) {
+                setTimeout(() => {
+                  if (!greetingTriggered) {
+                    greetingTriggered = true;
+
+                    console.log('🎙️  Triggering initial greeting (150ms after stream start)');
+
+                    // Send greeting as assistant message (not user command)
+                    // This prevents duplicate greetings from agent instructions
+                    session.transport.sendEvent({
+                      type: 'conversation.item.create',
+                      item: {
+                        type: 'message',
+                        role: 'assistant',
+                        content: [{
+                          type: 'text',
+                          text: 'Buongiorno, grazie per aver chiamato Comtel Italia. Sono Mathias, come posso aiutarla?'
+                        }]
+                      }
+                    });
+                    session.transport.sendEvent({
+                      type: 'response.create'
+                    });
+
+                    console.log('✅ Initial greeting sent to caller');
+                  }
+                }, 150);
+              }
               break;
             case 'stop':
               console.log('🛑 Media stream stopped');
@@ -471,37 +502,8 @@ fastify.register(async (fastifyInstance) => {
         }
       });
 
-      // Trigger greeting after media stream starts (once only)
-      // Wait for the transport 'start' event before triggering greeting
-      const checkAndGreet = setInterval(() => {
-        if (callSid && !greetingTriggered) {
-          greetingTriggered = true;
-
-          // Use low-level transport events to avoid interruption issues
-          session.transport.sendEvent({
-            type: 'conversation.item.create',
-            item: {
-              type: 'message',
-              role: 'user',
-              content: [{
-                type: 'input_text',
-                text: 'Saluta il cliente'  // Italian: "Greet the customer"
-              }]
-            }
-          });
-          session.transport.sendEvent({
-            type: 'response.create'
-          });
-
-          console.log('🎙️  Initial greeting triggered (after media stream started)');
-          clearInterval(checkAndGreet);
-        }
-      }, 100);
-
-      // Cleanup interval after 5 seconds if greeting hasn't triggered
-      setTimeout(() => {
-        clearInterval(checkAndGreet);
-      }, 5000);
+      // Greeting is now triggered event-driven in the 'start' event handler above
+      // No polling interval needed
 
       // Handle WebSocket errors
       ws.on('error', (error: Error) => {
