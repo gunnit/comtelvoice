@@ -158,8 +158,8 @@ Required in `.env`:
 - `SERVER_URL`: Public URL without protocol (e.g., `comtel-voice-agent.onrender.com`)
 - `PORT`: Server port (default: 3000, Render uses 10000)
 - `DATABASE_URL`: PostgreSQL connection string (e.g., `postgresql://user:pass@localhost:5432/comtel_voice`)
-- `TRANSFER_NUMBER_MAIN`: Main transfer number (sales/general), e.g., `+390220527868`
-- `TRANSFER_NUMBER_SUPPORT`: Technical support transfer number, e.g., `+39800200960`
+- `TRANSFER_NUMBER_MAIN`: Main transfer number (sales/general), e.g., `+390220527877`
+- `TRANSFER_NUMBER_SUPPORT`: Technical support transfer number, e.g., `+390220527877`
 
 **Note**: Twilio phone number is NOT required for this setup since we use BYOC Trunking.
 
@@ -240,7 +240,7 @@ Call transfers require special handling for BYOC Trunk configurations:
    ```xml
    <Response>
      <Dial timeout="30">
-       <Number byoc="BY4860934ef5d140355b71ab233b88dba2">+39022052781</Number>
+       <Number byoc="BY4860934ef5d140355b71ab233b88dba2">+390220527877</Number>
      </Dial>
    </Response>
    ```

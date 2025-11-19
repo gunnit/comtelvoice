@@ -254,7 +254,7 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
     name: 'transfer_call',
     description: 'Trasferisce la chiamata attiva a un numero di telefono specifico (reparto tecnico, ufficio, dipendente)',
     parameters: z.object({
-      targetNumber: z.string().describe('Numero di telefono di destinazione in formato internazionale (es: +39022052781)'),
+      targetNumber: z.string().describe('Numero di telefono di destinazione in formato internazionale (es: +390220527877)'),
       reason: z.string().nullable().optional().describe('Motivo del trasferimento (es: "assistenza tecnica", "parlare con Mario Rossi")')
     }),
     execute: async ({ targetNumber, reason }: {

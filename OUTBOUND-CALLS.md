@@ -75,7 +75,7 @@ const call = await client.calls.create({
   <Say language="it-IT">Un momento prego.</Say>
   <Connect>
     <Stream url="wss://your-server.com/media-stream">
-      <Parameter name="from" value="+390220527868" />
+      <Parameter name="from" value="+390220527877" />
       <Parameter name="to" value="+393331234567" />
       <Parameter name="outbound" value="true" />
     </Stream>
