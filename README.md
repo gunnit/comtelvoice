@@ -1,6 +1,6 @@
-# Comtel Voice Agent - Mathias
+# Comtel Voice Agent - Arthur
 
-A production-ready Twilio voice agent powered by OpenAI's Realtime API. Mathias acts as a professional secretary and receptionist for Comtel, handling incoming calls, providing company information, and demonstrating excellent phone etiquette.
+A production-ready Twilio voice agent powered by OpenAI's Realtime API. Arthur acts as a professional secretary and receptionist for Comtel, handling incoming calls, providing company information, and demonstrating excellent phone etiquette.
 
 ## Features
 
@@ -12,7 +12,7 @@ A production-ready Twilio voice agent powered by OpenAI's Realtime API. Mathias 
 
 ## Agent Capabilities
 
-Mathias can:
+Arthur can:
 - Greet callers warmly and professionally
 - Provide information about Comtel's services and contact details
 - Share business hours and operating schedule
@@ -27,7 +27,7 @@ Mathias can:
 /comtel-voice-agent
   /src
     index.ts          # Main server with Fastify and WebSocket handling
-    agent.ts          # Mathias agent configuration and instructions
+    agent.ts          # Arthur agent configuration and instructions
     tools.ts          # Tool definitions for company operations
   .env                # Environment variables (not committed)
   .env.example        # Template for environment variables
@@ -147,14 +147,14 @@ npm start
    {
      "status": "healthy",
      "service": "Comtel Voice Agent",
-     "agent": "Mathias",
+     "agent": "Arthur",
      "timestamp": "2024-01-15T10:30:00.000Z"
    }
    ```
 
 2. **Make a test call**:
    - Call your Twilio phone number
-   - Wait for Mathias to answer
+   - Wait for Arthur to answer
    - Test various interactions:
      - "What services does Comtel offer?"
      - "What are your business hours?"
@@ -186,7 +186,7 @@ npm start
    - Twilio webhook handler (returns TwiML)
    - WebSocket endpoint for media streaming
 
-2. **Mathias Agent** (`src/agent.ts`):
+2. **Arthur Agent** (`src/agent.ts`):
    - Agent personality and instructions
    - Voice configuration (using "verse" voice)
    - Turn detection settings for natural conversation
@@ -211,7 +211,7 @@ Caller → Twilio Phone Number
          ↓
      OpenAI Realtime API (GPT-4)
          ↓
-     Mathias Agent (with tools)
+     Arthur Agent (with tools)
          ↓
      Audio Response → Caller
 ```
@@ -266,7 +266,7 @@ voice: 'verse', // Options: alloy, echo, shimmer, verse, coral, sage
 ```
 
 ### Modify Agent Instructions
-Edit `MATHIAS_INSTRUCTIONS` in `src/agent.ts` to customize:
+Edit `ARTHUR_INSTRUCTIONS` in `src/agent.ts` to customize:
 - Greeting style
 - Response tone
 - Behavior guidelines
@@ -328,4 +328,4 @@ For issues or questions:
 
 ---
 
-**Built with care for Comtel** | Agent: Mathias | Version 1.0.0
+**Built with care for Comtel** | Agent: Arthur | Version 1.0.0

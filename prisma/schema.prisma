@@ -102,7 +102,7 @@ model Transcript {
 
   // Conversation details
   speaker         String      // user, agent, system
-  agentName       String?     // Mathias, Elena (null for user/system)
+  agentName       String?     // Arthur, Elena (null for user/system)
   text            String      // Transcript text
 
   // Sequencing and timing

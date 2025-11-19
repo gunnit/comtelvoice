@@ -1,4 +1,4 @@
-Create a production-ready Twilio voice agent named "Mathias" that acts as a secretary/receptionist for Comtel. The agent should handle incoming calls, provide company information, and demonstrate professional phone etiquette.
+Create a production-ready Twilio voice agent named "Arthur" that acts as a secretary/receptionist for Comtel. The agent should handle incoming calls, provide company information, and demonstrate professional phone etiquette.
 Technical Requirements
 1. Setup & Dependencies
 
@@ -32,10 +32,10 @@ TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
 SERVER_URL=your_server_url_here
 PORT=3000
 4. Agent Configuration
-Agent Name: Mathias
+Agent Name: Arthur
 Agent Role: Secretary/Receptionist for Comtel
 Core Instructions:
-You are Mathias, a professional and friendly secretary at Comtel's reception desk. Your responsibilities include:
+You are Arthur, a professional and friendly secretary at Comtel's reception desk. Your responsibilities include:
 
 1. Greeting callers warmly and professionally
 2. Answering questions about Comtel's services, location, and business hours

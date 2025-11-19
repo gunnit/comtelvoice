@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Twilio voice agent for **Comtel Italia** (an Italian ICT systems integration company) powered by OpenAI's Realtime API. The agent "Mathias" acts as an Italian-speaking receptionist handling incoming calls, providing company information, taking messages, and scheduling callbacks. The agent also provides **financial data access** (balance sheets, KPIs, revenues) after verifying an access code.
+This is a Twilio voice agent for **Comtel Italia** (an Italian ICT systems integration company) powered by OpenAI's Realtime API. The agent "Arthur" acts as an Italian-speaking receptionist handling incoming calls, providing company information, taking messages, and scheduling callbacks. The agent also provides **financial data access** (balance sheets, KPIs, revenues) after verifying an access code.
 
 **Critical Context**: All agent responses and prompts are in **Italian**. The company is based in Milan, Italy, not in the US.
 
@@ -61,7 +61,7 @@ Phone Call → Comtel Carrier/SBC (sbc-mi-acs.comtelitalia.it)
           → WebSocket /media-stream
           → TwilioRealtimeTransportLayer
           → OpenAI Realtime API (model: gpt-realtime)
-          → Mathias Agent + Tools
+          → Arthur Agent + Tools
           → Audio Response
 ```
 
@@ -76,11 +76,12 @@ Phone Call → Comtel Carrier/SBC (sbc-mi-acs.comtelitalia.it)
    - **Key integration**: Tracks calls, saves transcripts to database, manages session lifecycle
    - **Greeting Implementation**: Sends user message "Ciao" 200ms after OpenAI connection to trigger agent greeting (NOT assistant message, NOT polling)
 
-2. **src/agent.ts**: Agent configuration (unified Mathias agent)
-   - Contains `MATHIAS_INSTRUCTIONS` (in Italian) - the system prompt
+2. **src/agent.ts**: Agent configuration (unified Arthur agent)
+   - Contains `ARTHUR_INSTRUCTIONS` (in Italian) - the system prompt
    - Configures voice: "verse"
    - Model: `gpt-realtime` (NOT `gpt-4o-realtime-preview`)
    - Turn detection: Server VAD with 0.5 threshold, 500ms silence duration
+   - **Language Detection**: Greets in Italian, then automatically detects and adapts to user's language
    - **Critical**: Access code protection for financial data queries
 
 3. **src/tools.ts**: General receptionist tools (6 tools):
@@ -176,7 +177,7 @@ The app uses PostgreSQL with 4 main tables:
 ## Common Modification Scenarios
 
 ### Updating Agent Personality/Instructions
-Edit `MATHIAS_INSTRUCTIONS` in `src/agent.ts`. Keep in Italian. The agent is a **unified receptionist and financial assistant** - no longer uses multi-agent handoffs.
+Edit `ARTHUR_INSTRUCTIONS` in `src/agent.ts`. Keep in Italian. The agent is a **unified receptionist and financial assistant** - no longer uses multi-agent handoffs.
 
 ### Changing Voice
 In `src/agent.ts`, modify the `voice` parameter. Options: alloy, echo, shimmer, verse, coral, sage.
@@ -260,7 +261,7 @@ Call transfers require special handling for BYOC Trunk configurations:
 ## Testing
 
 1. **Health Check**: `curl https://comtel-voice-agent.onrender.com/`
-2. **Phone Test**: Call the Twilio number and interact with Mathias
+2. **Phone Test**: Call the Twilio number and interact with Arthur
 3. **Monitor Logs**: Watch for:
    - `📞 Incoming call received`
    - `🔌 WebSocket connection established`

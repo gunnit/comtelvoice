@@ -4,7 +4,7 @@ import fastifyFormBody from '@fastify/formbody';
 import fastifyWebsocket from '@fastify/websocket';
 import { RealtimeSession } from '@openai/agents/realtime';
 import { TwilioRealtimeTransportLayer } from '@openai/agents-extensions';
-import { createMathiasAgent } from './agent.js';
+import { createArthurAgent } from './agent.js';
 import type { WebSocket } from 'ws';
 import { callService } from './db/services/calls.js';
 import { transcriptService } from './db/services/transcripts.js';
@@ -55,7 +55,7 @@ fastify.get('/', async () => {
   return {
     status: 'healthy',
     service: 'Comtel Voice Agent',
-    agent: 'Mathias',
+    agent: 'Arthur',
     timestamp: new Date().toISOString(),
     endpoints: {
       health: 'GET /',
@@ -128,7 +128,7 @@ fastify.post('/incoming-call', async (_request, reply) => {
  * Returns TwiML for outbound calls initiated by the system
  *
  * Query parameters:
- * - mode: 'simple' (default) for basic audio, 'agent' to connect to Mathias
+ * - mode: 'simple' (default) for basic audio, 'agent' to connect to Arthur
  */
 fastify.post('/outbound-call', async (request, reply) => {
   console.log('📞 Outbound call webhook triggered');
@@ -148,7 +148,7 @@ fastify.post('/outbound-call', async (request, reply) => {
   let twiml: string;
 
   if (mode === 'agent') {
-    // Connect to Mathias agent via WebSocket
+    // Connect to Arthur agent via WebSocket
     const streamUrl = `wss://${SERVER_URL}/media-stream`;
     const transferCompleteUrl = `https://${SERVER_URL}/transfer-complete`;
 
@@ -164,7 +164,7 @@ fastify.post('/outbound-call', async (request, reply) => {
   </Connect>
 </Response>`;
 
-    console.log('🤖 Connecting outbound call to Mathias agent');
+    console.log('🤖 Connecting outbound call to Arthur agent');
   } else {
     // Simple test mode - play a message and hang up
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -413,11 +413,11 @@ fastify.register(async (fastifyInstance) => {
         }
       });
 
-      // Create Mathias agent with full capabilities (general + financial)
+      // Create Arthur agent with full capabilities (general + financial)
       // Pass call state getter function for transfer functionality
       // Note: session will be set after it's created below
       let realtimeSession: any = null;
-      const mathiasAgent = createMathiasAgent(() => ({
+      const arthurAgent = createArthurAgent(() => ({
         callSid,
         callerNumber,
         twilioNumber,
@@ -430,12 +430,12 @@ fastify.register(async (fastifyInstance) => {
       }));
 
       console.log('🤖 Unified agent system initialized:');
-      console.log('   - Mathias (Receptionist + Financial Assistant)');
+      console.log('   - Arthur (Receptionist + Financial Assistant)');
       console.log('   - All-in-one: General inquiries + Financial data (with access code)');
 
       // Create Realtime session with Twilio transport
       // Enable user audio transcription via config
-      const session = new RealtimeSession(mathiasAgent, {
+      const session = new RealtimeSession(arthurAgent, {
         transport,
         model: 'gpt-realtime',
         config: {
@@ -571,7 +571,7 @@ fastify.register(async (fastifyInstance) => {
                   const saved = await transcriptService.save({
                     callSid,
                     speaker: 'agent',
-                    agentName: 'Mathias',
+                    agentName: 'Arthur',
                     text: content.text,
                     eventType: 'conversation.item.created',
                   });
@@ -626,7 +626,7 @@ fastify.register(async (fastifyInstance) => {
               const saved = await transcriptService.save({
                 callSid,
                 speaker: 'agent',
-                agentName: 'Mathias',
+                agentName: 'Arthur',
                 text: event.transcript,
                 eventType: 'response.audio_transcript.done',
               });
@@ -683,7 +683,7 @@ const start = async () => {
     console.log(`  - Transfer Complete: POST https://${SERVER_URL}/transfer-complete`);
     console.log(`  - Media Stream: WSS wss://${SERVER_URL}/media-stream`);
     console.log('\n🤖 Unified Agent System:');
-    console.log('   - Mathias (All-in-One Agent)');
+    console.log('   - Arthur (All-in-One Agent)');
     console.log('   - Capabilities: General inquiries + Financial data');
     console.log('   - Security: Access code verification for financial data');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
