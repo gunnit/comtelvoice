@@ -335,16 +335,16 @@ fastify.register(async (fastifyInstance) => {
 
           console.log('🎙️  Triggering initial greeting (after OpenAI connected + Twilio ready)');
 
-          // Send greeting as assistant message (not user command)
-          // This prevents duplicate greetings from agent instructions
+          // Send a user message asking the agent to greet
+          // This triggers the agent to respond with audio (not just text)
           session.transport.sendEvent({
             type: 'conversation.item.create',
             item: {
               type: 'message',
-              role: 'assistant',
+              role: 'user',
               content: [{
-                type: 'text',
-                text: 'Buongiorno, grazie per aver chiamato Comtel Italia. Sono Mathias, come posso aiutarla?'
+                type: 'input_text',
+                text: 'Ciao'  // Simple greeting to trigger agent's response
               }]
             }
           });
@@ -352,7 +352,7 @@ fastify.register(async (fastifyInstance) => {
             type: 'response.create'
           });
 
-          console.log('✅ Initial greeting sent to caller');
+          console.log('✅ Greeting trigger sent - agent will respond with audio');
         } else if (!callSid) {
           console.warn('⚠️  Cannot send greeting: callSid not set yet');
         }
