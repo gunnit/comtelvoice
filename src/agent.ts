@@ -11,6 +11,7 @@ export interface CallState {
   twilioNumber: string | null;
   streamSid: string | null;  // Stream SID for sending stop event to Twilio
   session: RealtimeSession | null;  // Session reference for disconnecting during transfer
+  twilioWebSocket: any;  // Direct WebSocket reference for manual closure during transfer
   storePendingTransfer: (callSid: string, targetNumber: string) => void;  // Function to store pending transfer
 }
 

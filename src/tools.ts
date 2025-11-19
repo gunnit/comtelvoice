@@ -263,7 +263,7 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
     }) => {
       // Get call state from memory (not database)
       const callState = getCallState();
-      const { callSid, callerNumber, twilioNumber, streamSid, session, storePendingTransfer } = callState;
+      const { callSid, callerNumber, twilioNumber, streamSid, session, twilioWebSocket, storePendingTransfer } = callState;
 
       if (!callSid) {
         return JSON.stringify({
@@ -312,8 +312,9 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
           const closeStartTime = Date.now();
 
           try {
-            // Access the underlying Twilio WebSocket
-            const ws = (session.transport as any).twilioWebSocket;
+            // Use the direct WebSocket reference from callState
+            // (The transport's twilioWebSocket is private and cannot be accessed)
+            const ws = twilioWebSocket;
 
             if (ws && ws.readyState === 1) { // 1 = WebSocket.OPEN
               console.log('🔌 Closing underlying Twilio WebSocket...');

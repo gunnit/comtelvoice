@@ -423,6 +423,7 @@ fastify.register(async (fastifyInstance) => {
         twilioNumber,
         streamSid,
         session: realtimeSession,
+        twilioWebSocket: ws,  // Pass WebSocket reference for manual closure
         storePendingTransfer: (sid: string, target: string) => {
           pendingTransfers.set(sid, target);
         }
