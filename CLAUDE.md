@@ -41,9 +41,23 @@ Only deploy when explicitly requested by the user. Render auto-deploys on push t
 
 ## Architecture Overview
 
+### Twilio Infrastructure: BYOC Trunk (NOT Regular Phone Number)
+
+**Critical**: This system uses **Twilio BYOC (Bring Your Own Carrier) Trunking**, not a regular Twilio phone number.
+
+- **BYOC Trunk SID**: `BY4860934ef5d140355b71ab233b88dba2`
+- **BYOC Trunk Name**: `ct-sbc-pisani`
+- **Termination** (Inbound): Comtel carrier → Twilio SIP Domain → Webhook
+- **Origination** (Outbound): Twilio → Comtel carrier (for transfers)
+- **Origination Policy**: `ct-sbc-pisani` (points to `sbc-mi-acs.comtelitalia.it:5361;transport=tls`)
+
+**Impact on Transfers**: Must use `<Dial><Number byoc="BY...">` for outbound calls, NOT regular `<Dial>` or `<Refer>`.
+
 ### Request Flow
 ```
-Phone Call → Twilio → POST /incoming-call (returns TwiML)
+Phone Call → Comtel Carrier/SBC (sbc-mi-acs.comtelitalia.it)
+          → Twilio BYOC Trunk Termination
+          → POST /incoming-call (returns TwiML)
           → WebSocket /media-stream
           → TwilioRealtimeTransportLayer
           → OpenAI Realtime API (model: gpt-realtime)
@@ -53,11 +67,14 @@ Phone Call → Twilio → POST /incoming-call (returns TwiML)
 
 ### Core Components
 
-1. **src/index.ts**: Fastify server with three key endpoints:
+1. **src/index.ts**: Fastify server with five key endpoints:
    - Health check endpoint: `GET /`
    - Twilio webhook handler: `POST /incoming-call` (returns TwiML with WebSocket URL)
+   - Transfer completion handler: `POST /transfer-complete` (returns BYOC Dial TwiML for transfers)
+   - Transfer status handler: `POST /transfer-status` (receives SIP REFER status updates)
    - WebSocket media stream: `/media-stream` (handles real-time audio with OpenAI)
    - **Key integration**: Tracks calls, saves transcripts to database, manages session lifecycle
+   - **Greeting Implementation**: Sends user message "Ciao" 200ms after OpenAI connection to trigger agent greeting (NOT assistant message, NOT polling)
 
 2. **src/agent.ts**: Agent configuration (unified Mathias agent)
    - Contains `MATHIAS_INSTRUCTIONS` (in Italian) - the system prompt
@@ -138,10 +155,12 @@ Required in `.env`:
 - `TWILIO_ACCOUNT_SID`: Twilio Account SID
 - `TWILIO_AUTH_TOKEN`: Twilio Auth Token
 - `SERVER_URL`: Public URL without protocol (e.g., `comtel-voice-agent.onrender.com`)
-- `PORT`: Server port (default: 3000)
+- `PORT`: Server port (default: 3000, Render uses 10000)
 - `DATABASE_URL`: PostgreSQL connection string (e.g., `postgresql://user:pass@localhost:5432/comtel_voice`)
 - `TRANSFER_NUMBER_MAIN`: Main transfer number (sales/general), e.g., `+390220527868`
 - `TRANSFER_NUMBER_SUPPORT`: Technical support transfer number, e.g., `+39800200960`
+
+**Note**: Twilio phone number is NOT required for this setup since we use BYOC Trunking.
 
 ## Database Schema (Prisma)
 
@@ -195,21 +214,46 @@ config: {
 ```
 **Important**: Do NOT try to configure transcription via `sendMessage()` - it must be set during session initialization.
 
-### Implementing Call Transfers
-Call transfers require special handling due to WebSocket Media Streams:
+### Implementing Call Transfers (BYOC Trunk Specific)
+
+Call transfers require special handling for BYOC Trunk configurations:
 
 **Architecture:** The transfer tool receives a `CallState` object containing:
 - `callSid`: Twilio Call SID
 - `callerNumber`: Incoming caller's phone number
 - `twilioNumber`: Twilio/SIP number that received the call
-- `session`: RealtimeSession reference (for closing)
+- `streamSid`: Media Stream SID
+- `session`: RealtimeSession reference
+- `twilioWebSocket`: **Direct WebSocket reference** (critical for manual closure)
+- `storePendingTransfer`: Function to store transfer requests
 
-**Transfer Process (3 steps):**
-1. Close the OpenAI session: `await session.close()`
-2. Wait for clean WebSocket closure: `await new Promise(resolve => setTimeout(resolve, 200))`
-3. Update call with transfer TwiML: `await client.calls(callSid).update({ twiml: '<Response><Dial>...</Dial></Response>' })`
+**Transfer Process (Action URL Callback Pattern):**
 
-**Why this is necessary:** Calls in `<Connect><Stream>` are locked by Twilio and cannot be updated via REST API while the WebSocket is active. Closing the session first releases the call.
+1. **Store Pending Transfer**: Save callSid → targetNumber mapping in memory
+2. **Close WebSocket Manually**: Access `twilioWebSocket` directly and call `ws.close(1000, 'Transfer initiated')`
+   - **Critical**: The SDK's `twilioWebSocket` is a private field (`#twilioWebSocket`) and CANNOT be accessed via `(transport as any).twilioWebSocket`
+   - Must pass the original `ws` reference through `callState` to the transfer tool
+   - Wait for WebSocket 'close' event confirmation (with 3-second timeout)
+3. **Twilio Calls Action URL**: After WebSocket closes, Twilio calls `/transfer-complete` (1-2 seconds)
+4. **Return BYOC Dial TwiML**:
+   ```xml
+   <Response>
+     <Dial timeout="30">
+       <Number byoc="BY4860934ef5d140355b71ab233b88dba2">+39022052781</Number>
+     </Dial>
+   </Response>
+   ```
+
+**Why BYOC Dial is Required:**
+- Regular `<Dial>` without `byoc` parameter fails (no PSTN authorization for SIP Domains)
+- `<Refer><Sip>` doesn't work for BYOC Trunk origination calls
+- **BYOC parameter routes the call through Comtel's existing carrier connection** (Origination Policy)
+
+**Critical Implementation Details:**
+- **WebSocket Reference**: Must be passed to `callState` when creating the agent (line 426 in index.ts)
+- **Private Field Issue**: Cannot use `session.transport.twilioWebSocket` - it's a private field
+- **Timing**: If WebSocket doesn't close properly, Twilio times out after 80+ seconds and marks call as "completed", causing transfer to fail
+- **CallStatus Check**: Transfer TwiML only works if CallStatus is "in-progress", not "completed"
 
 **Transfer numbers:** Use environment variables `TRANSFER_NUMBER_MAIN` and `TRANSFER_NUMBER_SUPPORT` in agent instructions for easy configuration.
 
