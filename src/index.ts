@@ -243,36 +243,8 @@ fastify.register(async (fastifyInstance) => {
                 }
               }
 
-              // Trigger greeting after 'start' event (event-driven, not polling)
-              // Wait 150ms for OpenAI session to stabilize before sending greeting
-              if (!greetingTriggered) {
-                setTimeout(() => {
-                  if (!greetingTriggered) {
-                    greetingTriggered = true;
-
-                    console.log('🎙️  Triggering initial greeting (150ms after stream start)');
-
-                    // Send greeting as assistant message (not user command)
-                    // This prevents duplicate greetings from agent instructions
-                    session.transport.sendEvent({
-                      type: 'conversation.item.create',
-                      item: {
-                        type: 'message',
-                        role: 'assistant',
-                        content: [{
-                          type: 'text',
-                          text: 'Buongiorno, grazie per aver chiamato Comtel Italia. Sono Mathias, come posso aiutarla?'
-                        }]
-                      }
-                    });
-                    session.transport.sendEvent({
-                      type: 'response.create'
-                    });
-
-                    console.log('✅ Initial greeting sent to caller');
-                  }
-                }, 150);
-              }
+              // Greeting will be triggered after OpenAI connection is established
+              // (see code after session.connect() below)
               break;
             case 'stop':
               console.log('🛑 Media stream stopped');
@@ -354,6 +326,37 @@ fastify.register(async (fastifyInstance) => {
       console.log('✅ Connected to OpenAI Realtime API');
       console.log('📝 Transcript logging enabled (gpt-4o-transcribe, Italian)');
       console.log('🔐 Financial data protection: Access code verification enabled');
+
+      // Trigger greeting after OpenAI connection is established
+      // Wait 200ms to ensure Twilio 'start' event has been processed (so we have callSid)
+      setTimeout(() => {
+        if (!greetingTriggered && callSid) {
+          greetingTriggered = true;
+
+          console.log('🎙️  Triggering initial greeting (after OpenAI connected + Twilio ready)');
+
+          // Send greeting as assistant message (not user command)
+          // This prevents duplicate greetings from agent instructions
+          session.transport.sendEvent({
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'assistant',
+              content: [{
+                type: 'text',
+                text: 'Buongiorno, grazie per aver chiamato Comtel Italia. Sono Mathias, come posso aiutarla?'
+              }]
+            }
+          });
+          session.transport.sendEvent({
+            type: 'response.create'
+          });
+
+          console.log('✅ Initial greeting sent to caller');
+        } else if (!callSid) {
+          console.warn('⚠️  Cannot send greeting: callSid not set yet');
+        }
+      }, 200);
 
       // Listen for all session events to capture transcripts
       console.log('📝 Setting up transcript event listeners');
