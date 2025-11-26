@@ -336,6 +336,9 @@ fastify.register(async (fastifyInstance) => {
     let twilioNumber: string | null = null;  // Twilio SIP number that received the call
     let greetingTriggered = false;
 
+    // Queue for transcript events that arrive before callSid is ready
+    const pendingTranscriptEvents: any[] = [];
+
     try {
       // Create Twilio transport layer immediately
       // This allows the transport to handle ALL Twilio events including 'start'
@@ -381,6 +384,44 @@ fastify.register(async (fastifyInstance) => {
                   console.log('📊 Call saved to database:', callSid);
                 } catch (error) {
                   console.error('⚠️  Failed to save call to database:', error);
+                }
+
+                // Process any transcript events that were queued before callSid was ready
+                if (pendingTranscriptEvents.length > 0) {
+                  console.log(`📝 Processing ${pendingTranscriptEvents.length} queued transcript events`);
+                  for (const queuedEvent of pendingTranscriptEvents) {
+                    try {
+                      if (queuedEvent.type === 'conversation.item.input_audio_transcription.completed') {
+                        const transcript = queuedEvent.transcript;
+                        console.log('📝 [QUEUED] USER said:', transcript);
+                        if (transcript) {
+                          await transcriptService.save({
+                            callSid,
+                            speaker: 'user',
+                            text: transcript,
+                            eventType: 'input_audio_transcription.completed',
+                          });
+                        }
+                      }
+                      if (queuedEvent.type === 'response.audio_transcript.done') {
+                        console.log('🔊 [QUEUED] AGENT said:', queuedEvent.transcript);
+                        if (queuedEvent.transcript) {
+                          await transcriptService.save({
+                            callSid,
+                            speaker: 'agent',
+                            agentName: 'Arthur',
+                            text: queuedEvent.transcript,
+                            eventType: 'response.audio_transcript.done',
+                          });
+                        }
+                      }
+                    } catch (queueError) {
+                      console.error('⚠️  Failed to process queued transcript:', queueError);
+                    }
+                  }
+                  // Clear the queue
+                  pendingTranscriptEvents.length = 0;
+                  console.log('✅ Queued transcript events processed');
                 }
               }
 
@@ -440,8 +481,8 @@ fastify.register(async (fastifyInstance) => {
         model: 'gpt-realtime',
         config: {
           inputAudioTranscription: {
-            model: 'gpt-4o-transcribe',
-            language: 'it'  // Italian language hint for better accuracy
+            model: 'gpt-4o-transcribe'
+            // No language hint - auto-detect for multilingual support
           }
         }
       });
@@ -466,7 +507,7 @@ fastify.register(async (fastifyInstance) => {
         apiKey: OPENAI_API_KEY
       });
       console.log('✅ Connected to OpenAI Realtime API');
-      console.log('📝 Transcript logging enabled (gpt-4o-transcribe, Italian)');
+      console.log('📝 Transcript logging enabled (gpt-4o-transcribe, auto-detect language)');
       console.log('🔐 Financial data protection: Access code verification enabled');
 
       // Trigger greeting after OpenAI connection is established
@@ -503,44 +544,17 @@ fastify.register(async (fastifyInstance) => {
       // Listen for all session events to capture transcripts
       console.log('📝 Setting up transcript event listeners');
 
-      (session as any).on('*', async (event: any) => {
-        // Log ALL events for debugging (with filtering for noise)
-        const eventTypesToLog = [
-          'conversation.item.input_audio_transcription.completed',
-          'conversation.item.created',
-          'response.text.delta',
-          'response.audio_transcript.delta',
-          'response.audio_transcript.done',
-          'response.done'
-        ];
-
-        if (eventTypesToLog.includes(event.type)) {
-          console.log(`🔊 Session event received: ${event.type}`, {
-            hasCallSid: !!callSid,
-            callSid: callSid || 'not-set-yet'
-          });
-        }
-
-        if (!callSid) {
-          // Log warning if transcript events arrive before callSid is set
-          if (event.type.includes('transcript') || event.type.includes('conversation')) {
-            console.warn('⚠️  Transcript event received but callSid not set yet:', event.type);
-          }
-          return; // Only log if we have a callSid
-        }
-
+      // Helper function to process a single transcript event
+      const processTranscriptEvent = async (event: any, currentCallSid: string) => {
         try {
           // Handle user audio transcription completed
           if (event.type === 'conversation.item.input_audio_transcription.completed') {
             const transcript = event.transcript;
-            console.log('📝 User transcription completed:', {
-              transcript: transcript?.substring(0, 50),
-              callSid
-            });
+            console.log('📝 USER said:', transcript);
 
             if (transcript) {
               const saved = await transcriptService.save({
-                callSid,
+                callSid: currentCallSid,
                 speaker: 'user',
                 text: transcript,
                 eventType: 'input_audio_transcription.completed',
@@ -554,77 +568,13 @@ fastify.register(async (fastifyInstance) => {
             }
           }
 
-          // Handle conversation items (agent responses, user messages)
-          if (event.type === 'conversation.item.created') {
-            const item = event.item;
-            console.log('📝 Conversation item created:', {
-              role: item.role,
-              contentTypes: item.content?.map((c: any) => c.type),
-              callSid
-            });
-
-            // Agent text responses
-            if (item.role === 'assistant' && item.content) {
-              for (const content of item.content) {
-                if (content.type === 'text' && content.text) {
-                  console.log('📝 Saving agent text response:', content.text.substring(0, 50));
-                  const saved = await transcriptService.save({
-                    callSid,
-                    speaker: 'agent',
-                    agentName: 'Arthur',
-                    text: content.text,
-                    eventType: 'conversation.item.created',
-                  });
-
-                  if (saved) {
-                    console.log('✅ Agent transcript saved to database');
-                  } else {
-                    console.error('❌ Failed to save agent transcript to database');
-                  }
-                }
-              }
-            }
-
-            // User messages (text-based)
-            if (item.role === 'user' && item.content) {
-              for (const content of item.content) {
-                if (content.type === 'input_text' && content.text) {
-                  console.log('📝 Saving user text message:', content.text.substring(0, 50));
-                  const saved = await transcriptService.save({
-                    callSid,
-                    speaker: 'user',
-                    text: content.text,
-                    eventType: 'conversation.item.created',
-                  });
-
-                  if (saved) {
-                    console.log('✅ User message saved to database');
-                  } else {
-                    console.error('❌ Failed to save user message to database');
-                  }
-                }
-              }
-            }
-          }
-
-          // Handle response audio transcript delta (streaming transcripts)
-          if (event.type === 'response.audio_transcript.delta') {
-            console.log('🔊 Audio transcript delta received:', {
-              delta: event.delta?.substring(0, 30),
-              itemId: event.item_id
-            });
-          }
-
-          // Handle response audio transcript done (complete transcripts)
+          // Handle response audio transcript done (complete agent transcripts)
           if (event.type === 'response.audio_transcript.done') {
-            console.log('🔊 Audio transcript done:', {
-              transcript: event.transcript?.substring(0, 50),
-              itemId: event.item_id
-            });
+            console.log('🔊 AGENT said:', event.transcript);
 
             if (event.transcript) {
               const saved = await transcriptService.save({
-                callSid,
+                callSid: currentCallSid,
                 speaker: 'agent',
                 agentName: 'Arthur',
                 text: event.transcript,
@@ -641,9 +591,40 @@ fastify.register(async (fastifyInstance) => {
         } catch (error) {
           console.error('⚠️  Failed to process transcript event:', {
             eventType: event.type,
-            error: error instanceof Error ? error.message : error,
-            stack: error instanceof Error ? error.stack : undefined
+            error: error instanceof Error ? error.message : error
           });
+        }
+      };
+
+      (session as any).on('*', async (event: any) => {
+        // Log important transcript events for debugging
+        const transcriptEvents = [
+          'conversation.item.input_audio_transcription.completed',
+          'conversation.item.input_audio_transcription.delta',
+          'response.audio_transcript.delta',
+          'response.audio_transcript.done'
+        ];
+
+        if (transcriptEvents.includes(event.type)) {
+          console.log(`🔊 Transcript event: ${event.type}`, {
+            hasCallSid: !!callSid,
+            hasTranscript: !!event.transcript,
+            transcriptPreview: event.transcript?.substring(0, 50) || event.delta?.substring(0, 50)
+          });
+        }
+
+        // Queue transcript events if callSid is not ready yet
+        if (!callSid) {
+          if (transcriptEvents.includes(event.type)) {
+            console.log('⏳ Queueing transcript event (callSid not ready):', event.type);
+            pendingTranscriptEvents.push(event);
+          }
+          return;
+        }
+
+        // Process transcript events
+        if (transcriptEvents.includes(event.type)) {
+          await processTranscriptEvent(event, callSid);
         }
       });
 

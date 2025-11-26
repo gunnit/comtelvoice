@@ -320,6 +320,10 @@ export const createTransferCallTool = (getCallState: () => CallState) => {
               console.log('🔌 Closing underlying Twilio WebSocket...');
               console.log('   WebSocket readyState before close:', ws.readyState);
 
+              // Wait for 3 seconds to allow the agent's "Transferring..." message to play
+              console.log('⏳ Waiting 3 seconds for TTS to finish...');
+              await new Promise(resolve => setTimeout(resolve, 3000));
+
               // Close with proper code and reason
               // Code 1000 = Normal Closure
               ws.close(1000, 'Call transfer initiated');
