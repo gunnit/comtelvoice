@@ -63,3 +63,5 @@ frontend/node_modules/
 # Misc
 *.md.bak
 .claude/
+FRONTEND_IMPROVEMENTS.md
+test_frontend.py
