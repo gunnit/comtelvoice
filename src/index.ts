@@ -8,7 +8,10 @@ import { createArthurAgent } from './agent.js';
 import type { WebSocket } from 'ws';
 import { callService } from './db/services/calls.js';
 import { transcriptService } from './db/services/transcripts.js';
+import { callbackService } from './db/services/callbacks.js';
+import { messageService } from './db/services/messages.js';
 import { disconnectDatabase } from './db/index.js';
+import cors from '@fastify/cors';
 
 // Environment variables validation
 const REQUIRED_ENV_VARS = ['OPENAI_API_KEY', 'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'SERVER_URL', 'PORT'];
@@ -46,6 +49,10 @@ const fastify = Fastify({
 // Register plugins
 await fastify.register(fastifyFormBody);
 await fastify.register(fastifyWebsocket);
+await fastify.register(cors, {
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE']
+});
 
 /**
  * Health check endpoint
@@ -317,6 +324,186 @@ fastify.post('/transfer-status', async (request, reply) => {
   // Return empty TwiML - transfer is being handled by Comtel PBX
   return reply.type('text/xml').send('<Response></Response>');
 });
+
+// ============================================
+// Dashboard API Endpoints (Read-Only)
+// ============================================
+
+/**
+ * Get recent calls with related data
+ * GET /api/calls?limit=50
+ */
+fastify.get('/api/calls', async (request) => {
+  const query = request.query as { limit?: string };
+  const limit = parseInt(query.limit || '50', 10);
+
+  try {
+    const calls = await callService.getRecent(limit);
+    return { success: true, data: calls };
+  } catch (error) {
+    console.error('API Error - /api/calls:', error);
+    return { success: false, error: 'Failed to fetch calls' };
+  }
+});
+
+/**
+ * Get single call with full transcript
+ * GET /api/calls/:callSid
+ */
+fastify.get('/api/calls/:callSid', async (request) => {
+  const { callSid } = request.params as { callSid: string };
+
+  try {
+    const call = await callService.getBySid(callSid);
+    if (!call) {
+      return { success: false, error: 'Call not found' };
+    }
+
+    // Get formatted transcript for this call
+    const transcript = await transcriptService.getFormattedTranscript(callSid);
+    const stats = await transcriptService.getStats(callSid);
+
+    return {
+      success: true,
+      data: {
+        ...call,
+        formattedTranscript: transcript,
+        transcriptStats: stats
+      }
+    };
+  } catch (error) {
+    console.error('API Error - /api/calls/:callSid:', error);
+    return { success: false, error: 'Failed to fetch call' };
+  }
+});
+
+/**
+ * Search transcripts
+ * GET /api/transcripts/search?q=text&limit=50
+ */
+fastify.get('/api/transcripts/search', async (request) => {
+  const query = request.query as { q?: string; limit?: string };
+  const searchQuery = query.q || '';
+  const limit = parseInt(query.limit || '50', 10);
+
+  if (!searchQuery) {
+    return { success: false, error: 'Search query is required' };
+  }
+
+  try {
+    const results = await transcriptService.searchTranscripts(searchQuery, limit);
+    return { success: true, data: results };
+  } catch (error) {
+    console.error('API Error - /api/transcripts/search:', error);
+    return { success: false, error: 'Failed to search transcripts' };
+  }
+});
+
+/**
+ * Get all callbacks
+ * GET /api/callbacks?status=pending&limit=50
+ */
+fastify.get('/api/callbacks', async (request) => {
+  const query = request.query as { status?: string; limit?: string };
+  const status = query.status;
+  const limit = parseInt(query.limit || '50', 10);
+
+  try {
+    let callbacks;
+    if (status) {
+      callbacks = await callbackService.getByStatus(status, limit);
+    } else {
+      callbacks = await callbackService.getPending(limit);
+    }
+    return { success: true, data: callbacks };
+  } catch (error) {
+    console.error('API Error - /api/callbacks:', error);
+    return { success: false, error: 'Failed to fetch callbacks' };
+  }
+});
+
+/**
+ * Get all messages
+ * GET /api/messages?status=unread&recipient=John&limit=50
+ */
+fastify.get('/api/messages', async (request) => {
+  const query = request.query as { status?: string; recipient?: string; limit?: string };
+  const { status, recipient } = query;
+  const limit = parseInt(query.limit || '50', 10);
+
+  try {
+    let messages;
+    if (recipient) {
+      messages = await messageService.getByRecipient(recipient, limit);
+    } else if (status === 'unread') {
+      messages = await messageService.getUnread(limit);
+    } else if (status === 'urgent') {
+      messages = await messageService.getUrgent(limit);
+    } else {
+      // Get all messages - use unread as default
+      messages = await messageService.getUnread(100);
+    }
+    return { success: true, data: messages };
+  } catch (error) {
+    console.error('API Error - /api/messages:', error);
+    return { success: false, error: 'Failed to fetch messages' };
+  }
+});
+
+/**
+ * Get dashboard statistics
+ * GET /api/stats
+ */
+fastify.get('/api/stats', async () => {
+  try {
+    // Get recent calls for statistics
+    const recentCalls = await callService.getRecent(100);
+    const pendingCallbacks = await callbackService.getPending(100);
+    const unreadMessages = await messageService.getUnread(100);
+
+    // Calculate stats
+    const totalCalls = recentCalls.length;
+    const completedCalls = recentCalls.filter(c => c.status === 'completed').length;
+    const avgDuration = recentCalls
+      .filter(c => c.duration)
+      .reduce((sum, c) => sum + (c.duration || 0), 0) / (completedCalls || 1);
+
+    // Calls by day (last 7 days)
+    const callsByDay: Record<string, number> = {};
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      callsByDay[dateStr] = 0;
+    }
+    for (const call of recentCalls) {
+      const dateStr = call.startedAt.toISOString().split('T')[0];
+      if (callsByDay[dateStr] !== undefined) {
+        callsByDay[dateStr]++;
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        totalCalls,
+        completedCalls,
+        avgDuration: Math.round(avgDuration),
+        pendingCallbacks: pendingCallbacks.length,
+        unreadMessages: unreadMessages.length,
+        callsByDay
+      }
+    };
+  } catch (error) {
+    console.error('API Error - /api/stats:', error);
+    return { success: false, error: 'Failed to fetch stats' };
+  }
+});
+
+// ============================================
+// End Dashboard API Endpoints
+// ============================================
 
 /**
  * WebSocket endpoint for Twilio Media Stream
@@ -596,7 +783,9 @@ fastify.register(async (fastifyInstance) => {
         }
       };
 
-      (session as any).on('*', async (event: any) => {
+      // Listen on transport layer for raw OpenAI events (transcripts, audio, etc.)
+      // Note: session.on('*') only emits high-level events, transport.on('*') gets raw events
+      session.transport.on('*', async (event: any) => {
         // Log important transcript events for debugging
         const transcriptEvents = [
           'conversation.item.input_audio_transcription.completed',
