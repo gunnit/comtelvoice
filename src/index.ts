@@ -405,12 +405,12 @@ fastify.get('/api/transcripts/search', async (request) => {
  */
 fastify.get('/api/callbacks', async (request) => {
   const query = request.query as { status?: string; limit?: string };
-  const status = query.status;
+  const status = query.status as 'pending' | 'scheduled' | 'completed' | 'cancelled' | undefined;
   const limit = parseInt(query.limit || '50', 10);
 
   try {
     let callbacks;
-    if (status) {
+    if (status && ['pending', 'scheduled', 'completed', 'cancelled'].includes(status)) {
       callbacks = await callbackService.getByStatus(status, limit);
     } else {
       callbacks = await callbackService.getPending(limit);
