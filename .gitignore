@@ -41,4 +41,25 @@ coverage/
 *.tmp
 .cache/
 
+# Prisma generated
 /src/generated/prisma
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.python-version
+
+# Playwright/MCP
+.playwright-mcp/
+playwright-report/
+test-results/
+
+# Frontend build (if separate)
+frontend/dist/
+frontend/node_modules/
+
+# Misc
+*.md.bak
+.claude/
