@@ -125,35 +125,67 @@ export const getLocation = tool({
  */
 export const scheduleCallback = tool({
   name: 'schedule_callback',
-  description: 'Pianifica una richiesta di richiamata per un cliente',
+  description: 'Pianifica una richiesta di richiamata per un cliente. Raccogli quante più informazioni possibili per qualificare il lead.',
   parameters: z.object({
     name: z.string().describe('Nome di chi chiama'),
     phoneNumber: z.string().describe('Numero di telefono per la richiamata'),
     preferredTime: z.string().describe('Orario preferito per la richiamata (es: "domani mattina", "questo pomeriggio", "alle 14:00")'),
-    reason: z.string().nullable().optional().describe('Motivo della richiamata o argomento da discutere')
+    reason: z.string().nullable().optional().describe('Motivo della richiamata o argomento da discutere'),
+    // Lead qualification fields
+    companyName: z.string().nullable().optional().describe('Nome dell\'azienda del chiamante'),
+    role: z.string().nullable().optional().describe('Ruolo del chiamante in azienda (es: IT Manager, CEO, Responsabile Acquisti)'),
+    companySize: z.string().nullable().optional().describe('Dimensione azienda (es: "10 dipendenti", "50-100", "enterprise")'),
+    currentSolution: z.string().nullable().optional().describe('Soluzioni attuali utilizzate dal cliente'),
+    projectTimeline: z.string().nullable().optional().describe('Tempistica del progetto (es: "urgente", "entro 3 mesi", "in valutazione")'),
+    interestArea: z.string().nullable().optional().describe('Area di interesse (es: "VoIP", "cybersecurity", "cloud", "networking")')
   }),
-  execute: async ({ name, phoneNumber, preferredTime, reason }: {
+  execute: async ({ name, phoneNumber, preferredTime, reason, companyName, role, companySize, currentSolution, projectTimeline, interestArea }: {
     name: string;
     phoneNumber: string;
     preferredTime: string;
     reason?: string | null;
+    companyName?: string | null;
+    role?: string | null;
+    companySize?: string | null;
+    currentSolution?: string | null;
+    projectTimeline?: string | null;
+    interestArea?: string | null;
   }) => {
+    // Build enriched reason with lead qualification data
+    const qualificationNotes = [
+      companyName && `Azienda: ${companyName}`,
+      role && `Ruolo: ${role}`,
+      companySize && `Dimensione: ${companySize}`,
+      currentSolution && `Soluzione attuale: ${currentSolution}`,
+      projectTimeline && `Tempistica: ${projectTimeline}`,
+      interestArea && `Interesse: ${interestArea}`,
+      reason && `Note: ${reason}`
+    ].filter(Boolean).join(' | ');
+
     try {
       // Save to database
       const callback = await callbackService.create({
         callerName: name,
         callerPhone: phoneNumber,
         preferredTime,
-        reason: reason || undefined,
+        reason: qualificationNotes || reason || undefined,
       });
 
       console.log('📊 Callback saved to database:', callback.referenceNumber);
+      console.log('📋 Lead qualification data:', {
+        companyName: companyName || 'N/A',
+        role: role || 'N/A',
+        companySize: companySize || 'N/A',
+        interestArea: interestArea || 'N/A',
+        projectTimeline: projectTimeline || 'N/A'
+      });
 
       return JSON.stringify({
         success: true,
         callbackId: callback.referenceNumber,
-        message: `Richiamata pianificata per ${name} ${preferredTime}. La richiameremo al numero ${phoneNumber}.`,
-        numeroConferma: callback.referenceNumber
+        message: `Richiamata pianificata per ${name}${companyName ? ` di ${companyName}` : ''} ${preferredTime}. La richiameremo al numero ${phoneNumber}.`,
+        numeroConferma: callback.referenceNumber,
+        leadQualified: !!(companyName || role || interestArea)
       });
     } catch (error) {
       // Fallback: if database fails, still provide service with console logging
@@ -165,14 +197,20 @@ export const scheduleCallback = tool({
         nome: name,
         telefono: phoneNumber,
         orarioPreferito: preferredTime,
+        azienda: companyName || 'Non specificata',
+        ruolo: role || 'Non specificato',
+        dimensione: companySize || 'Non specificata',
+        interesse: interestArea || 'Non specificato',
+        tempistica: projectTimeline || 'Non specificata',
         motivo: reason || 'Non specificato'
       });
 
       return JSON.stringify({
         success: true,
         callbackId,
-        message: `Richiamata pianificata per ${name} ${preferredTime}. La richiameremo al numero ${phoneNumber}.`,
-        numeroConferma: callbackId
+        message: `Richiamata pianificata per ${name}${companyName ? ` di ${companyName}` : ''} ${preferredTime}. La richiameremo al numero ${phoneNumber}.`,
+        numeroConferma: callbackId,
+        leadQualified: !!(companyName || role || interestArea)
       });
     }
   }
@@ -185,38 +223,67 @@ export const scheduleCallback = tool({
  */
 export const takeMessage = tool({
   name: 'take_message',
-  description: 'Prende un messaggio per un dipendente o un reparto di Comtel Italia',
+  description: 'Prende un messaggio per un dipendente o un reparto di Comtel Italia. Raccogli informazioni sull\'azienda del chiamante quando possibile.',
   parameters: z.object({
     recipientName: z.string().describe('Nome della persona o del reparto per cui è il messaggio'),
     callerName: z.string().describe('Nome della persona che lascia il messaggio'),
     callerPhone: z.string().describe('Numero di telefono di chi chiama'),
     message: z.string().describe('Contenuto del messaggio'),
-    urgent: z.boolean().nullable().optional().describe('Se il messaggio è urgente')
+    urgent: z.boolean().nullable().optional().describe('Se il messaggio è urgente'),
+    // Additional context fields
+    callerCompany: z.string().nullable().optional().describe('Azienda del chiamante'),
+    callerEmail: z.string().nullable().optional().describe('Email del chiamante per follow-up'),
+    callerRole: z.string().nullable().optional().describe('Ruolo del chiamante in azienda'),
+    subject: z.string().nullable().optional().describe('Oggetto/argomento principale del messaggio (es: "preventivo VoIP", "problema tecnico")')
   }),
-  execute: async ({ recipientName, callerName, callerPhone, message, urgent = false }: {
+  execute: async ({ recipientName, callerName, callerPhone, message, urgent = false, callerCompany, callerEmail, callerRole, subject }: {
     recipientName: string;
     callerName: string;
     callerPhone: string;
     message: string;
     urgent?: boolean | null;
+    callerCompany?: string | null;
+    callerEmail?: string | null;
+    callerRole?: string | null;
+    subject?: string | null;
   }) => {
+    // Build enriched message with caller context
+    const enrichedMessage = [
+      subject && `[${subject.toUpperCase()}]`,
+      message,
+      callerCompany && `\n--- Contesto ---`,
+      callerCompany && `Azienda: ${callerCompany}`,
+      callerRole && `Ruolo: ${callerRole}`,
+      callerEmail && `Email: ${callerEmail}`
+    ].filter(Boolean).join(' ');
+
     try {
       // Save to database
       const savedMessage = await messageService.create({
         recipientName,
         callerName,
         callerPhone,
-        content: message,
+        content: enrichedMessage,
         urgent: urgent || false,
       });
 
       console.log('📊 Message saved to database:', savedMessage.referenceNumber);
+      if (callerCompany) {
+        console.log('📋 Caller context:', {
+          company: callerCompany,
+          role: callerRole || 'N/A',
+          email: callerEmail || 'N/A',
+          subject: subject || 'N/A'
+        });
+      }
 
+      const callerInfo = callerCompany ? `${callerName} di ${callerCompany}` : callerName;
       return JSON.stringify({
         success: true,
         messageId: savedMessage.referenceNumber,
-        message: `Messaggio registrato per ${recipientName}. ${urgent ? 'È stato contrassegnato come urgente e verrà notificato immediatamente.' : 'Riceverà questo messaggio a breve.'}`,
-        numeroConferma: savedMessage.referenceNumber
+        message: `Messaggio da ${callerInfo} registrato per ${recipientName}. ${urgent ? 'È stato contrassegnato come URGENTE e verrà notificato immediatamente.' : 'Riceverà questo messaggio a breve.'}`,
+        numeroConferma: savedMessage.referenceNumber,
+        hasCompanyInfo: !!callerCompany
       });
     } catch (error) {
       // Fallback: if database fails, still provide service with console logging
@@ -227,17 +294,23 @@ export const takeMessage = tool({
         messageId,
         destinatario: recipientName,
         da: callerName,
+        azienda: callerCompany || 'Non specificata',
+        ruolo: callerRole || 'Non specificato',
+        email: callerEmail || 'Non specificata',
         telefono: callerPhone,
+        oggetto: subject || 'Non specificato',
         contenuto: message,
         urgente: urgent,
         priorita: urgent ? 'ALTA' : 'NORMALE'
       });
 
+      const callerInfo = callerCompany ? `${callerName} di ${callerCompany}` : callerName;
       return JSON.stringify({
         success: true,
         messageId,
-        message: `Messaggio registrato per ${recipientName}. ${urgent ? 'È stato contrassegnato come urgente e verrà notificato immediatamente.' : 'Riceverà questo messaggio a breve.'}`,
-        numeroConferma: messageId
+        message: `Messaggio da ${callerInfo} registrato per ${recipientName}. ${urgent ? 'È stato contrassegnato come URGENTE e verrà notificato immediatamente.' : 'Riceverà questo messaggio a breve.'}`,
+        numeroConferma: messageId,
+        hasCompanyInfo: !!callerCompany
       });
     }
   }
