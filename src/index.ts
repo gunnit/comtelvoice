@@ -20,7 +20,7 @@ import {
   updateGlobalInstructions,
   updateGlobalKnowledgeBase,
   updateGlobalToolConfigs,
-  GLOBAL_CONFIG_USER_ID,
+  getSystemUserId,
 } from './db/services/agent-config.js';
 import { InstructionBuilder } from './services/instruction-builder.js';
 import { disconnectDatabase } from './db/index.js';
@@ -613,7 +613,8 @@ fastify.get('/api/agent-config', async (request) => {
 
   try {
     // Use global config (singleton) - creates default if not exists
-    const config = await agentConfigService.getOrCreate(GLOBAL_CONFIG_USER_ID);
+    const systemUserId = await getSystemUserId();
+    const config = await agentConfigService.getOrCreate(systemUserId);
     return { success: true, data: config };
   } catch (error) {
     console.error('API Error - /api/agent-config:', error);
@@ -666,7 +667,8 @@ fastify.get('/api/agent-config/instructions', async (request) => {
   }
 
   try {
-    const config = await agentConfigService.getFullConfig(GLOBAL_CONFIG_USER_ID);
+    const systemUserId = await getSystemUserId();
+    const config = await agentConfigService.getFullConfig(systemUserId);
     return { success: true, data: config?.instructions };
   } catch (error) {
     console.error('API Error - /api/agent-config/instructions:', error);
@@ -713,7 +715,8 @@ fastify.get('/api/agent-config/knowledge', async (request) => {
   }
 
   try {
-    const config = await agentConfigService.getFullConfig(GLOBAL_CONFIG_USER_ID);
+    const systemUserId = await getSystemUserId();
+    const config = await agentConfigService.getFullConfig(systemUserId);
     return { success: true, data: config?.knowledgeBase };
   } catch (error) {
     console.error('API Error - /api/agent-config/knowledge:', error);
@@ -752,7 +755,8 @@ fastify.get('/api/agent-config/tools', async (request) => {
   }
 
   try {
-    const config = await agentConfigService.getFullConfig(GLOBAL_CONFIG_USER_ID);
+    const systemUserId = await getSystemUserId();
+    const config = await agentConfigService.getFullConfig(systemUserId);
     const availableTools = agentConfigService.getAvailableTools();
 
     // Merge available tools with global config
@@ -808,7 +812,8 @@ fastify.get('/api/agent-config/instructions/preview', async (request) => {
   }
 
   try {
-    const config = await agentConfigService.getFullConfig(GLOBAL_CONFIG_USER_ID);
+    const systemUserId = await getSystemUserId();
+    const config = await agentConfigService.getFullConfig(systemUserId);
     if (!config) {
       return { success: false, error: 'Config not found' };
     }

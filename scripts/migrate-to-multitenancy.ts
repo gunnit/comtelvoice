@@ -20,6 +20,14 @@ const DEFAULT_USER = {
   companyName: 'Comtel Italia',
 };
 
+// System user for global agent configuration
+const SYSTEM_USER = {
+  email: 'system@comtelitalia.it',
+  password: 'SystemUser2024!', // Not used for login - just for FK constraint
+  name: 'Sistema',
+  companyName: 'Comtel Italia',
+};
+
 // Known Twilio phone numbers to associate with the default user
 // Add your Twilio numbers here
 const PHONE_NUMBERS = [
@@ -54,6 +62,26 @@ async function main() {
 
     console.log(`   ✓ Default user created/found: ${defaultUser.email}`);
     console.log(`   ✓ User ID: ${defaultUser.id}`);
+    console.log('');
+
+    // Step 1.5: Create system user for global agent configuration
+    console.log('Step 1.5: Creating system user for global config...');
+    const systemPasswordHash = await bcrypt.hash(SYSTEM_USER.password, 12);
+
+    const systemUser = await prisma.user.upsert({
+      where: { email: SYSTEM_USER.email },
+      update: {},
+      create: {
+        email: SYSTEM_USER.email,
+        passwordHash: systemPasswordHash,
+        name: SYSTEM_USER.name,
+        companyName: SYSTEM_USER.companyName,
+        isActive: false, // System user should not be able to login
+      },
+    });
+
+    console.log(`   ✓ System user created/found: ${systemUser.email}`);
+    console.log(`   ✓ System User ID: ${systemUser.id}`);
     console.log('');
 
     // Step 2: Create phone number entries

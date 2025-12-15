@@ -5,8 +5,52 @@ import type { AgentConfig, AgentInstructions, KnowledgeBase, ToolConfig } from '
 // SINGLETON CONFIG - One config for the entire deployment
 // ============================================
 
-// Special user ID for the global/singleton config
-export const GLOBAL_CONFIG_USER_ID = 'global-system-config';
+// System user email for global config (created by migration script)
+const SYSTEM_USER_EMAIL = 'system@comtelitalia.it';
+
+// Cached system user ID (fetched on first use)
+let cachedSystemUserId: string | null = null;
+
+/**
+ * Get the system user ID for global config
+ * Creates the system user if it doesn't exist
+ */
+export async function getSystemUserId(): Promise<string> {
+  if (cachedSystemUserId) {
+    return cachedSystemUserId;
+  }
+
+  // Try to find existing system user
+  let systemUser = await prisma.user.findUnique({
+    where: { email: SYSTEM_USER_EMAIL },
+    select: { id: true },
+  });
+
+  // If not found, create it (for backwards compatibility / auto-setup)
+  if (!systemUser) {
+    console.log('🔧 Creating system user for global config...');
+    const bcrypt = await import('bcrypt');
+    const passwordHash = await bcrypt.hash('SystemUser2024!', 12);
+
+    systemUser = await prisma.user.create({
+      data: {
+        email: SYSTEM_USER_EMAIL,
+        passwordHash,
+        name: 'Sistema',
+        companyName: 'Comtel Italia',
+        isActive: false, // System user cannot login
+      },
+      select: { id: true },
+    });
+    console.log(`✅ System user created with ID: ${systemUser.id}`);
+  }
+
+  cachedSystemUserId = systemUser.id;
+  return cachedSystemUserId;
+}
+
+// Export for backwards compatibility (but prefer using getSystemUserId())
+export const GLOBAL_CONFIG_USER_ID = 'system-user'; // Placeholder - actual ID is fetched dynamically
 
 // Cached config (loaded at startup, refreshed on save)
 let cachedConfig: FullAgentConfig | null = null;
@@ -441,13 +485,14 @@ export async function loadGlobalConfig(): Promise<FullAgentConfig | null> {
   try {
     console.log('🔄 Loading global agent config from database...');
 
-    let fullConfig = await agentConfigService.getFullConfig(GLOBAL_CONFIG_USER_ID);
+    const systemUserId = await getSystemUserId();
+    let fullConfig = await agentConfigService.getFullConfig(systemUserId);
 
     // If no config exists, create default
     if (!fullConfig) {
       console.log('🆕 No global config found, creating default with Comtel values...');
-      await agentConfigService.createDefault(GLOBAL_CONFIG_USER_ID, true);
-      fullConfig = await agentConfigService.getFullConfig(GLOBAL_CONFIG_USER_ID);
+      await agentConfigService.createDefault(systemUserId, true);
+      fullConfig = await agentConfigService.getFullConfig(systemUserId);
     }
 
     if (fullConfig) {
@@ -507,7 +552,8 @@ export function getConfigLoadedAt(): Date | null {
 export async function updateGlobalAgentConfig(
   data: Partial<Omit<AgentConfig, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
 ): Promise<AgentConfig | null> {
-  const result = await agentConfigService.updateConfig(GLOBAL_CONFIG_USER_ID, data);
+  const systemUserId = await getSystemUserId();
+  const result = await agentConfigService.updateConfig(systemUserId, data);
   if (result) {
     await refreshGlobalConfig();
   }
@@ -520,7 +566,8 @@ export async function updateGlobalAgentConfig(
 export async function updateGlobalInstructions(
   data: Partial<Omit<AgentInstructions, 'id' | 'agentConfigId' | 'createdAt' | 'updatedAt'>>
 ): Promise<AgentInstructions | null> {
-  const result = await agentConfigService.updateInstructions(GLOBAL_CONFIG_USER_ID, data);
+  const systemUserId = await getSystemUserId();
+  const result = await agentConfigService.updateInstructions(systemUserId, data);
   if (result) {
     await refreshGlobalConfig();
   }
@@ -533,7 +580,8 @@ export async function updateGlobalInstructions(
 export async function updateGlobalKnowledgeBase(
   data: Partial<Omit<KnowledgeBase, 'id' | 'agentConfigId' | 'createdAt' | 'updatedAt'>>
 ): Promise<KnowledgeBase | null> {
-  const result = await agentConfigService.updateKnowledgeBase(GLOBAL_CONFIG_USER_ID, data);
+  const systemUserId = await getSystemUserId();
+  const result = await agentConfigService.updateKnowledgeBase(systemUserId, data);
   if (result) {
     await refreshGlobalConfig();
   }
@@ -546,7 +594,8 @@ export async function updateGlobalKnowledgeBase(
 export async function updateGlobalToolConfigs(
   tools: Array<{ toolName: string; enabled: boolean; parameters?: any }>
 ): Promise<boolean> {
-  const result = await agentConfigService.updateToolConfigs(GLOBAL_CONFIG_USER_ID, tools);
+  const systemUserId = await getSystemUserId();
+  const result = await agentConfigService.updateToolConfigs(systemUserId, tools);
   if (result) {
     await refreshGlobalConfig();
   }
