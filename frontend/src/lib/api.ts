@@ -68,9 +68,11 @@ export interface Stats {
   totalCalls: number;
   completedCalls: number;
   avgDuration: number;
+  totalMinutes: number;
   pendingCallbacks: number;
   unreadMessages: number;
   callsByDay: Record<string, number>;
+  durationByDay: Record<string, number>;
 }
 
 export interface CallDetail extends Call {

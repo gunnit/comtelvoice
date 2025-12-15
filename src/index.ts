@@ -583,9 +583,11 @@ fastify.get('/api/stats', async (request) => {
         totalCalls: callStats.totalCalls,
         completedCalls: callStats.completedCalls,
         avgDuration: callStats.avgDuration,
+        totalMinutes: callStats.totalMinutes,
         pendingCallbacks: pendingCallbacksCount,
         unreadMessages: unreadMessagesCount,
-        callsByDay: callStats.callsByDay
+        callsByDay: callStats.callsByDay,
+        durationByDay: callStats.durationByDay
       }
     };
   } catch (error) {

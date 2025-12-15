@@ -4,6 +4,18 @@ import { getStats, getCalls, type Stats, type Call } from "@/lib/api"
 import { Phone, PhoneCall, MessageSquare, Clock, CheckCircle, TrendingUp, ArrowUpRight, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  CartesianGrid,
+} from "recharts"
 
 
 
@@ -134,39 +146,68 @@ export function Dashboard() {
 
       {/* Charts and Recent Activity Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* Overview Chart */}
+        {/* Calls Volume Chart */}
         <Card className="col-span-4">
           <CardHeader>
-            <CardTitle>Panoramica</CardTitle>
+            <CardTitle>Volume Chiamate</CardTitle>
             <CardDescription>
-              Volume chiamate ultimi 7 giorni
+              Numero di chiamate negli ultimi 7 giorni
             </CardDescription>
           </CardHeader>
-          <CardContent className="pl-2">
+          <CardContent>
             {stats?.callsByDay && (
-              <div className="flex items-end gap-2 h-[200px] px-4">
-                {Object.entries(stats.callsByDay).map(([date, count]) => {
-                  const maxCount = Math.max(...Object.values(stats.callsByDay), 1)
-                  const height = (count / maxCount) * 100
-                  const day = new Date(date).toLocaleDateString("it-IT", { weekday: "short" })
-                  const dayNum = new Date(date).getDate()
-                  return (
-                    <div key={date} className="flex-1 flex flex-col items-center gap-2">
-                      <div className="w-full flex flex-col items-center justify-end h-[160px]">
-                        <span className="text-xs font-medium mb-1">{count}</span>
-                        <div
-                          className="w-full max-w-[40px] bg-primary rounded-md transition-all"
-                          style={{ height: `${Math.max(height, 8)}%` }}
+              <ChartContainer
+                config={{
+                  calls: { label: "Chiamate", color: "hsl(var(--primary))" },
+                }}
+                className="h-[200px] w-full"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={Object.entries(stats.callsByDay).map(([date, count]) => ({
+                      date,
+                      calls: count,
+                      day: new Date(date).toLocaleDateString("it-IT", { weekday: "short" }),
+                      dayNum: new Date(date).getDate(),
+                    }))}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                    <XAxis
+                      dataKey="day"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12 }}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }) => (
+                        <ChartTooltipContent
+                          active={active}
+                          payload={payload as any}
+                          label={label}
+                          labelFormatter={(l) => l ? `${l.charAt(0).toUpperCase() + l.slice(1)}` : ""}
+                          config={{
+                            calls: { label: "Chiamate", color: "hsl(var(--primary))" },
+                          }}
                         />
-                      </div>
-                      <div className="text-center">
-                        <span className="text-xs text-muted-foreground capitalize block">{day}</span>
-                        <span className="text-xs text-muted-foreground">{dayNum}</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                      )}
+                    />
+                    <Bar
+                      dataKey="calls"
+                      fill="hsl(var(--primary))"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={50}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             )}
           </CardContent>
         </Card>
@@ -225,45 +266,132 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Quick Stats Row */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Tasso Completamento</CardDescription>
-            <CardTitle className="text-4xl">{completionRate}%</CardTitle>
+      {/* Duration Chart Row */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        {/* Duration Chart */}
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Tempo Totale Chiamate</CardTitle>
+            <CardDescription>
+              Minuti di conversazione per giorno (ultimi 7 giorni)
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              <span className="text-emerald-600">Buono</span> rispetto alla media
-            </div>
+            {stats?.durationByDay && (
+              <ChartContainer
+                config={{
+                  minutes: { label: "Minuti", color: "hsl(var(--chart-2))" },
+                }}
+                className="h-[200px] w-full"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={Object.entries(stats.durationByDay).map(([date, minutes]) => ({
+                      date,
+                      minutes,
+                      day: new Date(date).toLocaleDateString("it-IT", { weekday: "short" }),
+                      dayNum: new Date(date).getDate(),
+                    }))}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                    <XAxis
+                      dataKey="day"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 12 }}
+                      allowDecimals={false}
+                      tickFormatter={(value) => `${value}m`}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }) => (
+                        <ChartTooltipContent
+                          active={active}
+                          payload={payload as any}
+                          label={label}
+                          labelFormatter={(l) => l ? `${l.charAt(0).toUpperCase() + l.slice(1)}` : ""}
+                          valueFormatter={(v) => `${v} min`}
+                          config={{
+                            minutes: { label: "Minuti", color: "hsl(142 76% 36%)" },
+                          }}
+                        />
+                      )}
+                    />
+                    <defs>
+                      <linearGradient id="fillMinutes" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(142 76% 36%)" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="hsl(142 76% 36%)" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                    <Area
+                      type="monotone"
+                      dataKey="minutes"
+                      stroke="hsl(142 76% 36%)"
+                      fill="url(#fillMinutes)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Durata Media</CardDescription>
-            <CardTitle className="text-4xl">{formatDuration(stats?.avgDuration || 0)}</CardTitle>
+        {/* Quick Stats */}
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Riepilogo</CardTitle>
+            <CardDescription>
+              Metriche principali
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              Per chiamata completata
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Tasso Completamento</p>
+                <p className="text-2xl font-bold">{completionRate}%</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                <TrendingUp className="h-6 w-6 text-emerald-600" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Da Gestire</CardDescription>
-            <CardTitle className="text-4xl">
-              {(stats?.pendingCallbacks || 0) + (stats?.unreadMessages || 0)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              Richiami + messaggi in sospeso
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Durata Media</p>
+                <p className="text-2xl font-bold">{formatDuration(stats?.avgDuration || 0)}</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <Clock className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Minuti Totali (7gg)</p>
+                <p className="text-2xl font-bold">{stats?.totalMinutes || 0} min</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <Phone className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Da Gestire</p>
+                <p className="text-2xl font-bold">
+                  {(stats?.pendingCallbacks || 0) + (stats?.unreadMessages || 0)}
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                <Users className="h-6 w-6 text-orange-600" />
+              </div>
             </div>
           </CardContent>
         </Card>

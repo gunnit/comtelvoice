@@ -142,33 +142,52 @@ export const callService = {
   async getStatsForUser(userId: string) {
     try {
       const now = new Date();
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
       const [total, completed, calls] = await Promise.all([
         prisma.call.count({ where: { userId } }),
         prisma.call.count({ where: { userId, status: 'completed' } }),
         prisma.call.findMany({
-          where: { userId, startedAt: { gte: thirtyDaysAgo } },
-          select: { duration: true, startedAt: true },
+          where: { userId, startedAt: { gte: sevenDaysAgo } },
+          select: { duration: true, startedAt: true, status: true },
         }),
       ]);
 
-      const avgDuration = calls.length > 0
-        ? Math.round(calls.reduce((sum, c) => sum + (c.duration || 0), 0) / calls.length)
+      // Calculate averages and totals
+      const completedCalls = calls.filter(c => c.status === 'completed');
+      const avgDuration = completedCalls.length > 0
+        ? Math.round(completedCalls.reduce((sum, c) => sum + (c.duration || 0), 0) / completedCalls.length)
         : 0;
 
-      // Group calls by day for chart
+      const totalMinutes = Math.round(calls.reduce((sum, c) => sum + (c.duration || 0), 0) / 60);
+
+      // Generate all 7 days (including days with 0 calls) - sorted chronologically
       const callsByDay: Record<string, number> = {};
+      const durationByDay: Record<string, number> = {};
+
+      for (let i = 6; i >= 0; i--) {
+        const day = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dayStr = day.toISOString().split('T')[0];
+        callsByDay[dayStr] = 0;
+        durationByDay[dayStr] = 0;
+      }
+
+      // Fill in actual data
       calls.forEach(call => {
         const day = call.startedAt.toISOString().split('T')[0];
-        callsByDay[day] = (callsByDay[day] || 0) + 1;
+        if (callsByDay[day] !== undefined) {
+          callsByDay[day]++;
+          durationByDay[day] += Math.round((call.duration || 0) / 60); // Convert to minutes
+        }
       });
 
       return {
         totalCalls: total,
         completedCalls: completed,
         avgDuration,
+        totalMinutes,
         callsByDay,
+        durationByDay,
       };
     } catch (error) {
       console.error(`Failed to get stats for user ${userId}:`, error);
@@ -176,7 +195,9 @@ export const callService = {
         totalCalls: 0,
         completedCalls: 0,
         avgDuration: 0,
+        totalMinutes: 0,
         callsByDay: {},
+        durationByDay: {},
       };
     }
   },
