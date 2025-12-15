@@ -7,6 +7,7 @@ import { TwilioRealtimeTransportLayer } from '@openai/agents-extensions';
 import { createArthurAgent, createAgentFromGlobalConfig } from './agent.js';
 import type { WebSocket } from 'ws';
 import { callService } from './db/services/calls.js';
+import { prisma, disconnectDatabase } from './db/index.js';
 import { transcriptService } from './db/services/transcripts.js';
 import { callbackService } from './db/services/callbacks.js';
 import { messageService } from './db/services/messages.js';
@@ -23,7 +24,6 @@ import {
   getSystemUserId,
 } from './db/services/agent-config.js';
 import { InstructionBuilder } from './services/instruction-builder.js';
-import { disconnectDatabase } from './db/index.js';
 import cors from '@fastify/cors';
 
 // Environment variables validation
@@ -853,6 +853,79 @@ fastify.get('/api/agent-config/instructions/variables', async (request) => {
 // ============================================
 // End Agent Configuration API Endpoints
 // ============================================
+
+// ============================================
+// Admin Endpoints (One-time fixes)
+// ============================================
+
+/**
+ * Fix orphaned data - assign calls/callbacks/messages with null userId to admin
+ * POST /api/admin/fix-orphaned-data
+ */
+fastify.post('/api/admin/fix-orphaned-data', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  try {
+    // Get admin user
+    const adminUser = await userService.getByEmail('admin@comtelitalia.it');
+    if (!adminUser) {
+      return { success: false, error: 'Admin user not found' };
+    }
+
+    // Fix orphaned calls
+    const callsResult = await prisma.call.updateMany({
+      where: { userId: null },
+      data: { userId: adminUser.id },
+    });
+
+    // Fix orphaned callbacks
+    const callbacksResult = await prisma.callback.updateMany({
+      where: { userId: null },
+      data: { userId: adminUser.id },
+    });
+
+    // Fix orphaned messages
+    const messagesResult = await prisma.message.updateMany({
+      where: { userId: null },
+      data: { userId: adminUser.id },
+    });
+
+    // Add missing phone number if not exists
+    const phoneNumber = '+390220527868';
+    const existingPhone = await prisma.phoneNumber.findUnique({
+      where: { number: phoneNumber },
+    });
+
+    let phoneAdded = false;
+    if (!existingPhone) {
+      await prisma.phoneNumber.create({
+        data: {
+          number: phoneNumber,
+          label: 'Linea Secondaria',
+          userId: adminUser.id,
+        },
+      });
+      phoneAdded = true;
+    }
+
+    console.log(`✅ Fixed orphaned data: ${callsResult.count} calls, ${callbacksResult.count} callbacks, ${messagesResult.count} messages`);
+
+    return {
+      success: true,
+      data: {
+        callsFixed: callsResult.count,
+        callbacksFixed: callbacksResult.count,
+        messagesFixed: messagesResult.count,
+        phoneNumberAdded: phoneAdded,
+      }
+    };
+  } catch (error) {
+    console.error('API Error - /api/admin/fix-orphaned-data:', error);
+    return { success: false, error: 'Failed to fix orphaned data' };
+  }
+});
 
 /**
  * WebSocket endpoint for Twilio Media Stream
