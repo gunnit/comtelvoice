@@ -75,6 +75,41 @@ export interface Stats {
   durationByDay: Record<string, number>;
 }
 
+export interface CallAnalysis {
+  id: string;
+  summary: string;
+  sentimentOverall: 'positive' | 'neutral' | 'negative' | 'frustrated';
+  sentimentTrend?: 'improving' | 'stable' | 'declining';
+  sentimentScore?: number;
+  primaryIntent: string;
+  secondaryIntents?: string[];
+  entities?: {
+    names: string[];
+    products: string[];
+    dates: string[];
+    phones: string[];
+    emails: string[];
+  };
+  actionItems?: Array<{
+    description: string;
+    assignee?: string;
+    priority?: string;
+  }>;
+  urgencyScore: 'low' | 'medium' | 'high' | 'critical';
+  urgencyReason?: string;
+  leadScore?: 'hot' | 'warm' | 'cold';
+  leadScoreReason?: string;
+  isFaq: boolean;
+  faqTopic?: string;
+  resolutionStatus: string;
+  topicTags?: string[];
+  modelUsed: string;
+  tokensUsed?: number;
+  processingTimeMs?: number;
+  language: string;
+  createdAt: string;
+}
+
 export interface CallDetail extends Call {
   formattedTranscript: string;
   transcriptStats: {
@@ -84,6 +119,7 @@ export interface CallDetail extends Call {
     avgUserLength: number;
     avgAgentLength: number;
   };
+  analysis?: CallAnalysis;
 }
 
 interface ApiResponse<T> {
@@ -359,4 +395,39 @@ export async function cancelCallback(referenceNumber: string): Promise<Callback>
  */
 export async function markMessageRead(referenceNumber: string): Promise<Message> {
   return fetchApiMutation<Message>(`/messages/${referenceNumber}/read`, 'PUT', {});
+}
+
+// ============================================
+// Call Analysis API Functions
+// ============================================
+
+interface AnalyzeCallResponse {
+  data: CallAnalysis;
+  cached: boolean;
+}
+
+/**
+ * Analyze call transcript with AI
+ */
+export async function analyzeCall(
+  callSid: string,
+  options?: { force?: boolean; model?: 'gpt-4.1' | 'gpt-5.1' | 'gpt-5-mini' }
+): Promise<{ analysis: CallAnalysis; cached: boolean }> {
+  const result = await fetchApiMutation<AnalyzeCallResponse>(
+    `/calls/${callSid}/analyze`,
+    'POST',
+    options
+  );
+  return { analysis: result.data, cached: result.cached };
+}
+
+/**
+ * Get existing analysis for a call
+ */
+export async function getCallAnalysis(callSid: string): Promise<CallAnalysis | null> {
+  try {
+    return await fetchApi<CallAnalysis>(`/calls/${callSid}/analysis`);
+  } catch {
+    return null;
+  }
 }

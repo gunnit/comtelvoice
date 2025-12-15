@@ -24,6 +24,8 @@ import {
   getSystemUserId,
 } from './db/services/agent-config.js';
 import { InstructionBuilder } from './services/instruction-builder.js';
+import { analysisService } from './db/services/analysis.js';
+import { analyzeTranscript } from './services/transcript-analyzer.js';
 import cors from '@fastify/cors';
 
 // Environment variables validation
@@ -458,12 +460,16 @@ fastify.get('/api/calls/:callSid', async (request) => {
     const transcript = await transcriptService.getFormattedTranscript(callSid);
     const stats = await transcriptService.getStats(callSid);
 
+    // Get existing analysis if available
+    const analysis = await analysisService.getByCallId(call.id);
+
     return {
       success: true,
       data: {
         ...call,
         formattedTranscript: transcript,
-        transcriptStats: stats
+        transcriptStats: stats,
+        analysis
       }
     };
   } catch (error) {
@@ -598,6 +604,127 @@ fastify.get('/api/stats', async (request) => {
 
 // ============================================
 // End Dashboard API Endpoints
+// ============================================
+
+// ============================================
+// Call Analysis API Endpoints
+// ============================================
+
+/**
+ * Analyze call transcript with AI
+ * POST /api/calls/:callSid/analyze
+ */
+fastify.post('/api/calls/:callSid/analyze', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  const { callSid } = request.params as { callSid: string };
+  const body = request.body as { force?: boolean; model?: 'gpt-4.1' | 'gpt-5.1' | 'gpt-5-mini' };
+
+  try {
+    // 1. Verify call exists and belongs to user
+    const call = await callService.getBySidForUser(callSid, request.user.userId);
+    if (!call) {
+      return { success: false, error: 'Chiamata non trovata' };
+    }
+
+    // 2. Check if analysis already exists (unless force=true)
+    if (!body.force) {
+      const existingAnalysis = await analysisService.getByCallId(call.id);
+      if (existingAnalysis) {
+        return { success: true, data: existingAnalysis, cached: true };
+      }
+    }
+
+    // 3. Get transcript
+    const transcript = await transcriptService.getFormattedTranscript(callSid);
+    if (!transcript || transcript === 'No transcript available.') {
+      return { success: false, error: 'Nessuna trascrizione disponibile per questa chiamata' };
+    }
+
+    // 4. Check minimum transcript length (at least 4 messages)
+    const lines = transcript.split('\n').filter((l: string) => l.trim());
+    if (lines.length < 4) {
+      return { success: false, error: 'Trascrizione troppo breve per l\'analisi (minimo 4 messaggi)' };
+    }
+
+    // 5. Run AI analysis
+    console.log(`🧠 Running AI analysis for call ${callSid}...`);
+    const { result, tokensUsed, processingTimeMs } = await analyzeTranscript(
+      transcript,
+      { model: body.model || 'gpt-5.1' }
+    );
+    console.log(`✅ Analysis complete in ${processingTimeMs}ms (${tokensUsed} tokens)`);
+
+    // 6. Delete existing analysis if force=true
+    if (body.force) {
+      await analysisService.delete(call.id);
+    }
+
+    // 7. Save analysis to database
+    const analysis = await analysisService.create({
+      callId: call.id,
+      summary: result.summary,
+      sentimentOverall: result.sentiment.overall,
+      sentimentTrend: result.sentiment.trend,
+      sentimentScore: result.sentiment.score,
+      primaryIntent: result.intent.primary,
+      secondaryIntents: result.intent.secondary,
+      entities: result.entities,
+      actionItems: result.actionItems,
+      urgencyScore: result.urgency.score,
+      urgencyReason: result.urgency.reason,
+      leadScore: result.leadScore?.score,
+      leadScoreReason: result.leadScore?.reason,
+      isFaq: result.faq.isFaq,
+      faqTopic: result.faq.topic,
+      resolutionStatus: result.resolution,
+      topicTags: result.topicTags,
+      modelUsed: body.model || 'gpt-5.1',
+      tokensUsed,
+      processingTimeMs,
+      language: result.language,
+    });
+
+    return { success: true, data: analysis, cached: false };
+  } catch (error) {
+    console.error('API Error - POST /api/calls/:callSid/analyze:', error);
+    return { success: false, error: 'Analisi fallita. Riprova più tardi.' };
+  }
+});
+
+/**
+ * Get existing analysis for a call
+ * GET /api/calls/:callSid/analysis
+ */
+fastify.get('/api/calls/:callSid/analysis', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  const { callSid } = request.params as { callSid: string };
+
+  try {
+    const call = await callService.getBySidForUser(callSid, request.user.userId);
+    if (!call) {
+      return { success: false, error: 'Chiamata non trovata' };
+    }
+
+    const analysis = await analysisService.getByCallId(call.id);
+    if (!analysis) {
+      return { success: false, error: 'Nessuna analisi disponibile per questa chiamata' };
+    }
+
+    return { success: true, data: analysis };
+  } catch (error) {
+    console.error('API Error - GET /api/calls/:callSid/analysis:', error);
+    return { success: false, error: 'Failed to fetch analysis' };
+  }
+});
+
+// ============================================
+// End Call Analysis API Endpoints
 // ============================================
 
 // ============================================

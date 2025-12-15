@@ -86,6 +86,7 @@ model Call {
   callbacks     Callback[]
   messages      Message[]
   transcripts   Transcript[]
+  analysis      CallAnalysis?
 
   @@index([callSid])
   @@index([startedAt])
@@ -342,4 +343,59 @@ model ToolConfig {
   @@unique([agentConfigId, toolName])
   @@index([agentConfigId])
   @@map("tool_configs")
+}
+
+// AI-powered transcript analysis results
+model CallAnalysis {
+  id                String   @id @default(cuid())
+
+  // Core analysis results
+  summary           String   @db.Text     // 2-3 sentence summary
+
+  // Sentiment analysis
+  sentimentOverall  String                // positive, neutral, negative, frustrated
+  sentimentTrend    String?               // improving, stable, declining
+  sentimentScore    Float?                // -1.0 to 1.0
+
+  // Intent classification
+  primaryIntent     String                // sales_inquiry, support, complaint, info_request, callback_request, other
+  secondaryIntents  Json?                 // Array of additional intents
+
+  // Key entities extracted (stored as JSON)
+  entities          Json?                 // { names: [], products: [], dates: [], phones: [], emails: [] }
+
+  // Action items
+  actionItems       Json?                 // Array of { description: string, assignee?: string, priority?: string }
+
+  // Scoring
+  urgencyScore      String                // low, medium, high, critical
+  urgencyReason     String?               // Explanation for urgency level
+  leadScore         String?               // hot, warm, cold (for sales calls)
+  leadScoreReason   String?               // Reasoning for lead score
+
+  // FAQ and categorization
+  isFaq             Boolean  @default(false)
+  faqTopic          String?               // If FAQ, what topic
+  resolutionStatus  String                // resolved, needs_followup, escalated, unknown
+  topicTags         Json?                 // Array of topic tags ["VoIP", "Security", etc.]
+
+  // Metadata
+  modelUsed         String   @default("gpt-5.1")
+  tokensUsed        Int?
+  processingTimeMs  Int?
+  language          String   @default("it")  // Detected language of transcript
+
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relation to Call (one-to-one)
+  callId            String   @unique
+  call              Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+  @@index([primaryIntent])
+  @@index([urgencyScore])
+  @@index([sentimentOverall])
+  @@map("call_analyses")
 }

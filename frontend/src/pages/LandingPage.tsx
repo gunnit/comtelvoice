@@ -114,6 +114,7 @@ function PhoneMockup() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 1, duration: 0.5 }}
                         >
+                            <p className="text-xs text-violet-400 mb-1">Arthur</p>
                             <p className="text-sm text-slate-300 italic">"Buongiorno, Comtel Italia..."</p>
                         </motion.div>
                     </div>
@@ -310,7 +311,7 @@ export function LandingPage() {
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                 </span>
-                                <span className="text-sm text-slate-300">Powered by OpenAI GPT-4 Realtime</span>
+                                <span className="text-sm text-slate-300">AI Vocale di Ultima Generazione</span>
                             </motion.div>
 
                             {/* Headline */}
@@ -453,9 +454,9 @@ export function LandingPage() {
                                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center mb-4">
                                             <Headphones className="w-6 h-6 text-white" />
                                         </div>
-                                        <h3 className="text-2xl font-bold text-white mb-3">Conversazione Naturale</h3>
+                                        <h3 className="text-2xl font-bold text-white mb-3">Incontra Arthur</h3>
                                         <p className="text-slate-400 leading-relaxed mb-4">
-                                            Powered by GPT-4 Realtime. Il tuo receptionist AI risponde alle chiamate con voce naturale,
+                                            <span className="text-white font-medium">Arthur</span>, il tuo receptionist AI, risponde alle chiamate con voce naturale,
                                             capisce il contesto e gestisce conversazioni complesse in italiano.
                                         </p>
                                         <a href="#" className="inline-flex items-center gap-2 text-violet-400 hover:text-violet-300 font-medium text-sm">
