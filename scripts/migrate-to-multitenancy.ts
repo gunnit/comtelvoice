@@ -32,6 +32,7 @@ const SYSTEM_USER = {
 // Add your Twilio numbers here
 const PHONE_NUMBERS = [
   { number: '+390220527877', label: 'Linea Principale' },
+  { number: '+390220527868', label: 'Linea Secondaria' },
   // Add more phone numbers as needed
 ];
 

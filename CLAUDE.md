@@ -31,13 +31,21 @@ npx prisma generate               # Regenerate Prisma client after schema change
 ## Deployment Strategy
 
 - **Local Development**: Test locally using `npm run dev` with ngrok tunnel
-- **Production Deployment**: Render.com (service ID: `srv-d2u2ih15pdvs73a2dge0`)
-- **Service URL**: https://comtel-voice-agent.onrender.com
-- **Important**: Backend must remain on Render.com because Twilio webhooks require a public URL (cannot use localhost)
+- **Backend Deployment**: Render.com web service (ID: `srv-d2u2ih15pdvs73a2dge0`)
+  - URL: https://comtel-voice-agent.onrender.com
+  - Build: `npm install && npm run build && npx prisma migrate deploy`
+- **Frontend Deployment**: Render.com static site (ID: `srv-d4vsmqngi27c73dbjf10`)
+  - URL: https://comtel-voice-dashboard.onrender.com
+  - Build: `cd frontend && npm install && npm run build`
+  - Publish: `frontend/dist`
+  - **SPA Routing**: Uses `404.html` fallback for client-side routing
+- **Important**: Backend must remain on Render.com because Twilio webhooks require a public URL
 
 ### Deploying to Render
 
-Only deploy when explicitly requested by the user. Render auto-deploys on push to main branch if GitHub integration is set up.
+Only deploy when explicitly requested by the user. Both services auto-deploy on push to main branch.
+
+**Default Login**: `admin@comtelitalia.it` / `ComtelAdmin2024!` (created by migration script)
 
 ## Architecture Overview
 
@@ -106,6 +114,15 @@ Phone Call → Comtel Carrier/SBC (sbc-mi-acs.comtelitalia.it)
    - `services/callbacks.ts`: Callback requests with reference numbers (RIC-xxxxx)
    - `services/messages.ts`: Messages with reference numbers (MSG-xxxxx)
    - `services/transcripts.ts`: Conversation transcripts (user & agent speech)
+   - `services/auth.ts`: Authentication service (login, logout, JWT tokens, sessions)
+   - `services/users.ts`: User management (CRUD, phone number associations)
+   - `services/agent-config.ts`: **Singleton config service** - loads global agent configuration at startup with caching
+
+6. **Agent Configuration System** (`src/services/` + `src/`):
+   - `services/instruction-builder.ts`: Template builder with variable substitution ({{agentName}}, {{companyName}}, etc.)
+   - `tools-dynamic.ts`: Creates tools dynamically from database config and knowledge base
+   - **Single-tenant architecture**: One global config (GLOBAL_CONFIG_USER_ID) loaded at server startup, cached in memory
+   - **Dynamic agent creation**: `createAgentFromGlobalConfig()` in `src/agent.ts` builds agent from database config
 
 ### Important Technical Details
 
@@ -151,7 +168,7 @@ When modifying agent instructions or tools, use these accurate details:
 
 ## Environment Variables
 
-Required in `.env`:
+**Backend** (`.env`):
 - `OPENAI_API_KEY`: OpenAI API key with Realtime API access
 - `TWILIO_ACCOUNT_SID`: Twilio Account SID
 - `TWILIO_AUTH_TOKEN`: Twilio Auth Token
@@ -160,27 +177,53 @@ Required in `.env`:
 - `DATABASE_URL`: PostgreSQL connection string (e.g., `postgresql://user:pass@localhost:5432/comtel_voice`)
 - `TRANSFER_NUMBER_MAIN`: Main transfer number (sales/general), e.g., `+390220527877`
 - `TRANSFER_NUMBER_SUPPORT`: Technical support transfer number, e.g., `+390220527877`
+- `JWT_SECRET`: Secret for JWT token signing (use random string in production)
+- `JWT_EXPIRES_IN`: Token expiration (default: `7d`)
+
+**Frontend** (set in Render dashboard for static site):
+- `VITE_API_URL`: Backend API URL (e.g., `https://comtel-voice-agent.onrender.com`)
 
 **Note**: Twilio phone number is NOT required for this setup since we use BYOC Trunking.
 
 ## Database Schema (Prisma)
 
-The app uses PostgreSQL with 4 main tables:
+The app uses PostgreSQL with these tables:
 
-1. **calls**: Tracks all incoming calls (callSid, from/to numbers, status, duration)
+**Core Data:**
+1. **calls**: Tracks all incoming calls (callSid, from/to numbers, status, duration, userId)
 2. **callbacks**: Callback requests with reference numbers (RIC-xxxxx format)
 3. **messages**: Messages for employees with reference numbers (MSG-xxxxx format)
 4. **transcripts**: Full conversation transcripts (speaker, agentName, text, sequenceNumber)
+
+**Authentication & Multi-tenancy:**
+5. **users**: User accounts (email, passwordHash, name, companyName)
+6. **sessions**: JWT session tracking for token revocation
+7. **phone_numbers**: Maps Twilio numbers to users
+
+**Agent Configuration (Single-tenant):**
+8. **agent_configs**: Core agent settings (voice, temperature, greeting, VAD settings)
+9. **agent_instructions**: System prompt configuration (template mode or custom)
+10. **knowledge_bases**: Company info, business hours, FAQs, transfer numbers
+11. **tool_configs**: Per-tool enable/disable and parameter overrides
 
 **Graceful degradation**: If database connection fails, the app continues working but falls back to console logging.
 
 ## Common Modification Scenarios
 
 ### Updating Agent Personality/Instructions
-Edit `ARTHUR_INSTRUCTIONS` in `src/agent.ts`. Keep in Italian. The agent is a **unified receptionist and financial assistant** - no longer uses multi-agent handoffs.
+
+**Via Dashboard (Preferred)**: Use the Settings page at `/settings` to modify:
+- Agent name, voice, temperature in "Agente" tab
+- Instructions in "Istruzioni" tab (template mode or custom)
+- Company info in "Knowledge Base" tab
+
+**Via Code (Fallback)**: Edit `ARTHUR_INSTRUCTIONS` in `src/agent.ts`. Keep in Italian. The agent is a **unified receptionist and financial assistant** - no longer uses multi-agent handoffs.
+
+**Note**: Dashboard changes take effect immediately (config is refreshed after save). Code changes require redeployment.
 
 ### Changing Voice
-In `src/agent.ts`, modify the `voice` parameter. Options: alloy, echo, shimmer, verse, coral, sage.
+**Via Dashboard**: Settings → Agente tab → Voice dropdown
+**Via Code**: In `src/agent.ts`, modify the `voice` parameter. Options: alloy, echo, shimmer, verse, coral, sage.
 
 ### Adding New General Tools
 1. Define tool in `src/tools.ts` using `tool()` from `@openai/agents/realtime`
@@ -347,27 +390,43 @@ The app supports dark/light mode toggle. Theme variables are defined in `fronten
 frontend/
 ├── src/
 │   ├── components/
-│   │   ├── ui/           # shadcn/ui components
-│   │   └── Layout.tsx    # Main layout with sidebar
+│   │   ├── ui/              # shadcn/ui components
+│   │   ├── Layout.tsx       # Main layout with sidebar
+│   │   └── ProtectedRoute.tsx # Auth guard for protected pages
 │   ├── pages/
+│   │   ├── LandingPage.tsx  # Public marketing landing page
+│   │   ├── Login.tsx        # Authentication page
 │   │   ├── Dashboard.tsx
 │   │   ├── Calls.tsx
 │   │   ├── CallDetail.tsx
 │   │   ├── Callbacks.tsx
 │   │   ├── Messages.tsx
-│   │   └── Search.tsx
+│   │   ├── Search.tsx
+│   │   └── Settings.tsx     # Agent configuration (4 tabs)
 │   ├── lib/
-│   │   ├── api.ts        # API client
-│   │   └── utils.ts      # Utility functions
-│   ├── index.css         # Global styles + Tailwind + CSS variables
-│   └── main.tsx          # Entry point
+│   │   ├── api.ts           # API client (uses VITE_API_URL)
+│   │   ├── auth.ts          # Zustand auth store (login, logout, JWT)
+│   │   └── utils.ts         # Utility functions
+│   ├── index.css            # Global styles + Tailwind + CSS variables
+│   └── main.tsx             # Entry point
+├── public/
+│   └── 404.html             # SPA routing fallback for Render
 ```
+
+#### Settings Page (Agent Configuration)
+
+The Settings page (`/settings`) has 4 tabs:
+1. **Agente**: Voice, name, temperature, greeting, turn detection settings
+2. **Istruzioni**: Template mode or custom instructions editor with preview
+3. **Knowledge Base**: Company info, contact, location, business hours, FAQs
+4. **Strumenti**: Enable/disable individual tools
 
 #### API Integration
 
-The frontend proxies to the backend (configured in `vite.config.ts`):
-- Development: Proxies `/api/*` to Render.com backend
+- **Production**: Uses `VITE_API_URL` environment variable for backend URL
+- **Development**: Proxies `/api/*` to Render.com backend (vite.config.ts)
 - All API calls use TanStack Query for caching and state management
+- Auth state managed by Zustand with localStorage persistence
 
 ## Testing
 
@@ -384,12 +443,18 @@ The frontend proxies to the backend (configured in `vite.config.ts`):
 
 ## Production Deployment
 
-### Render.com Setup
+### Render.com Setup (Backend)
 1. **Build Command**: `npm install && npm run build && npx prisma migrate deploy`
 2. **Start Command**: `npm start`
 3. **Add PostgreSQL**: Link a PostgreSQL database (auto-sets `DATABASE_URL`)
-4. **Environment Variables**: Set all required env vars from `.env.example`
+4. **Environment Variables**: Set all required env vars (including `JWT_SECRET` for production!)
 5. **Twilio Webhook**: Point to `https://comtel-voice-agent.onrender.com/incoming-call`
+6. **Run migration script**: `npx tsx scripts/migrate-to-multitenancy.ts` (creates default admin user)
+
+### Render.com Setup (Frontend)
+1. **Build Command**: `cd frontend && npm install && npm run build`
+2. **Publish Directory**: `frontend/dist`
+3. **Environment Variable**: `VITE_API_URL=https://comtel-voice-agent.onrender.com`
 
 ### Important Notes
 - **Message/Callback Storage**: Now saves to PostgreSQL database (not just console logs)

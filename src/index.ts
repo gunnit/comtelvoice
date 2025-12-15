@@ -924,6 +924,16 @@ fastify.register(async (fastifyInstance) => {
                     }
                   }
 
+                  // Fallback: If no user found by phone, try to get default admin user
+                  if (!userId) {
+                    const adminUser = await userService.getByEmail('admin@comtelitalia.it');
+                    if (adminUser) {
+                      userId = adminUser.id;
+                      currentUserId = adminUser.id;
+                      console.log('📊 Call assigned to default admin user (no phone match)');
+                    }
+                  }
+
                   await callService.create({
                     callSid,
                     streamSid: streamSid || undefined,
