@@ -63,8 +63,13 @@ const fastify = Fastify({
 await fastify.register(fastifyFormBody);
 await fastify.register(fastifyWebsocket);
 await fastify.register(cors, {
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE']
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://comtel-voice-dashboard.onrender.com',
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
 });
 
 // Register authentication middleware for API routes

@@ -1,7 +1,10 @@
 // API client for fetching data from backend
 import { getAuthToken, useAuth } from './auth';
 
-const API_BASE = '/api';
+// In production, use full API URL; in development, proxy handles /api
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api';
 
 export interface Call {
   id: string;
