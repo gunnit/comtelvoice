@@ -100,19 +100,19 @@ export const transcriptService = {
     return transcripts
       .map((t) => {
         const speaker = t.speaker === 'agent'
-          ? `${t.agentName || 'Agent'}`
+          ? `[AGENT ${t.agentName || 'Arthur'}]`
           : t.speaker === 'user'
-            ? 'User'
-            : 'System';
+            ? '[USER]'
+            : '[SYSTEM]';
 
         const time = t.timestamp.toISOString().substring(11, 19); // HH:MM:SS
-        return `[${time}] ${speaker}: ${t.text}`;
+        return `[${time}] ${speaker} ${t.text}`;
       })
       .join('\n');
   },
 
   /**
-   * Search transcripts by text content
+   * Search transcripts by text content (no user filter)
    */
   async searchTranscripts(
     query: string,
@@ -131,7 +131,36 @@ export const transcriptService = {
         include: { call: true },
       });
     } catch (error) {
-      console.error(`❌ Failed to search transcripts for "${query}":`, error);
+      console.error(`Failed to search transcripts for "${query}":`, error);
+      return [];
+    }
+  },
+
+  /**
+   * Search transcripts by text content for a specific user
+   */
+  async searchTranscriptsForUser(
+    userId: string,
+    query: string,
+    limit: number = 50
+  ): Promise<Transcript[]> {
+    try {
+      return await prisma.transcript.findMany({
+        where: {
+          text: {
+            contains: query,
+            mode: 'insensitive',
+          },
+          call: {
+            userId,
+          },
+        },
+        orderBy: { timestamp: 'desc' },
+        take: limit,
+        include: { call: true },
+      });
+    } catch (error) {
+      console.error(`Failed to search transcripts for user ${userId}:`, error);
       return [];
     }
   },

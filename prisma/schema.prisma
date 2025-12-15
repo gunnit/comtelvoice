@@ -10,6 +10,62 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User accounts - multi-tenant support
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  passwordHash  String
+  name          String
+  companyName   String?
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relationships
+  phoneNumbers  PhoneNumber[]
+  sessions      Session[]
+  calls         Call[]
+  callbacks     Callback[]
+  messages      Message[]
+  agentConfig   AgentConfig?
+
+  @@index([email])
+  @@map("users")
+}
+
+// Phone numbers - map Twilio numbers to users
+model PhoneNumber {
+  id        String   @id @default(cuid())
+  number    String   @unique // e.g., "+390220527877"
+  label     String?  // e.g., "Linea Principale", "Supporto"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // Owner
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([number])
+  @@index([userId])
+  @@map("phone_numbers")
+}
+
+// User sessions - for JWT token tracking and revocation
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // User relationship
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("sessions")
+}
+
 // Call records - tracks all incoming calls
 model Call {
   id            String      @id @default(cuid())
@@ -22,6 +78,10 @@ model Call {
   endedAt       DateTime?
   duration      Int?        // Duration in seconds
 
+  // User ownership (via phone number lookup)
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+
   // Relationships
   callbacks     Callback[]
   messages      Message[]
@@ -29,6 +89,7 @@ model Call {
 
   @@index([callSid])
   @@index([startedAt])
+  @@index([userId])
   @@map("calls")
 }
 
@@ -53,6 +114,10 @@ model Callback {
   scheduledFor    DateTime?   // When it's scheduled
   completedAt     DateTime?   // When it was completed
 
+  // User ownership
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id])
+
   // Related call
   callId          String?
   call            Call?       @relation(fields: [callId], references: [id])
@@ -60,6 +125,7 @@ model Callback {
   @@index([status])
   @@index([createdAt])
   @@index([referenceNumber])
+  @@index([userId])
   @@map("callbacks")
 }
 
@@ -85,6 +151,10 @@ model Message {
   readAt          DateTime?   // When it was marked as read
   forwardedAt     DateTime?   // When it was forwarded
 
+  // User ownership
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id])
+
   // Related call
   callId          String?
   call            Call?       @relation(fields: [callId], references: [id])
@@ -93,6 +163,7 @@ model Message {
   @@index([recipientName])
   @@index([createdAt])
   @@index([referenceNumber])
+  @@index([userId])
   @@map("messages")
 }
 
@@ -122,4 +193,153 @@ model Transcript {
   @@index([speaker])
   @@index([timestamp])
   @@map("transcripts")
+}
+
+// Agent Configuration - per-user agent settings
+model AgentConfig {
+  id                    String   @id @default(cuid())
+
+  // Core agent settings
+  agentName             String   @default("Arthur")
+  voice                 String   @default("verse") // alloy, echo, shimmer, verse, coral, sage
+  temperature           Float    @default(0.2)     // 0.0 - 1.0
+  model                 String   @default("gpt-realtime")
+
+  // Turn detection settings
+  turnDetectionEnabled  Boolean  @default(true)
+  vadThreshold          Float    @default(0.5)    // 0.0 - 1.0
+  silenceDurationMs     Int      @default(500)    // milliseconds
+  prefixPaddingMs       Int      @default(300)
+
+  // Greeting configuration
+  greetingMessage       String   @default("Ciao")
+  greetingDelayMs       Int      @default(200)
+
+  // Language settings
+  primaryLanguage       String   @default("it")   // ISO language code
+  autoDetectLanguage    Boolean  @default(true)
+  transcriptionModel    String   @default("gpt-4o-transcribe")
+
+  // User ownership (one config per user)
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Relationships
+  instructions          AgentInstructions?
+  knowledgeBase         KnowledgeBase?
+  toolConfigs           ToolConfig[]
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+  @@map("agent_configs")
+}
+
+// Agent Instructions - system prompt configuration
+model AgentInstructions {
+  id                     String   @id @default(cuid())
+
+  // Template mode vs full text mode
+  useTemplate            Boolean  @default(true)
+
+  // Full custom instructions (when useTemplate = false)
+  customInstructions     String?  @db.Text
+
+  // Template-based section overrides (when useTemplate = true)
+  roleDescription        String?  @db.Text  // Agent's role and responsibilities
+  communicationStyle     String?  @db.Text  // Style guidelines
+  languageInstructions   String?  @db.Text  // Multilingual handling
+  closingInstructions    String?  @db.Text  // How to end calls
+  additionalInstructions String?  @db.Text  // Extra custom rules
+
+  // Relation to AgentConfig
+  agentConfigId          String   @unique
+  agentConfig            AgentConfig @relation(fields: [agentConfigId], references: [id], onDelete: Cascade)
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("agent_instructions")
+}
+
+// Knowledge Base - company info, FAQs, etc.
+model KnowledgeBase {
+  id                     String   @id @default(cuid())
+
+  // Company Information
+  companyName            String?
+  companyTagline         String?
+  companyDescription     String?  @db.Text
+  companyMission         String?  @db.Text
+
+  // Contact Information
+  phoneMain              String?
+  phoneSupport           String?
+  email                  String?
+  website                String?
+
+  // Location
+  address                String?
+  city                   String?
+  postalCode             String?
+  region                 String?
+  country                String?  @default("Italia")
+  directions             String?  @db.Text  // How to reach the office
+
+  // Business Hours (stored as JSON)
+  businessHours          Json?    // { "lunedi": "09:00-18:00", ... }
+  timezone               String?  @default("CET/CEST")
+  holidayNote            String?
+
+  // Services and capabilities (stored as JSON arrays)
+  services               Json?    // ["VoIP", "Networking", ...]
+  businessAreas          Json?    // ["Customer & User Interaction", ...]
+  partners               Json?    // ["Microsoft", "Huawei", ...]
+
+  // FAQs (stored as JSON array)
+  faqs                   Json?    // [{ "question": "...", "answer": "..." }, ...]
+
+  // Transfer numbers
+  transferNumberMain     String?
+  transferNumberSupport  String?
+
+  // Financial access (if enabled)
+  financialAccessEnabled Boolean  @default(false)
+  financialAccessCodes   Json?    // ["CODE1", "CODE2"]
+  financialDataPath      String?  // Path to JSON file or null for embedded data
+
+  // Relation to AgentConfig
+  agentConfigId          String   @unique
+  agentConfig            AgentConfig @relation(fields: [agentConfigId], references: [id], onDelete: Cascade)
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("knowledge_bases")
+}
+
+// Tool Configuration - enable/disable and configure individual tools
+model ToolConfig {
+  id                  String   @id @default(cuid())
+
+  toolName            String   // get_company_info, schedule_callback, etc.
+  enabled             Boolean  @default(true)
+
+  // Tool-specific parameters (stored as JSON)
+  parameters          Json?    // Tool-specific config
+
+  // Custom description override (for agent instructions)
+  descriptionOverride String?
+
+  // Relation to AgentConfig
+  agentConfigId       String
+  agentConfig         AgentConfig @relation(fields: [agentConfigId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([agentConfigId, toolName])
+  @@index([agentConfigId])
+  @@map("tool_configs")
 }

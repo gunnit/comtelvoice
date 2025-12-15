@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getCall, type CallDetail as CallDetailType } from "@/lib/api"
-import { ArrowLeft, Phone, Clock, User, Bot, MessageSquare, PhoneCall } from "lucide-react"
+import { ArrowLeft, Phone, Clock, User, Bot, MessageSquare, PhoneCall, Calendar, PhoneIncoming } from "lucide-react"
 
 function formatDuration(seconds: number): string {
+  if (!seconds || seconds === 0) return "N/D"
   if (seconds < 60) return `${seconds}s`
   const mins = Math.floor(seconds / 60)
   const secs = seconds % 60
@@ -23,6 +24,44 @@ function formatDate(dateStr: string): string {
     minute: "2-digit",
     second: "2-digit",
   })
+}
+
+function formatPhone(phone: string): string {
+  if (!phone) return "N/D"
+  const cleaned = phone.replace(/\s+/g, "").replace(/-/g, "")
+
+  if (cleaned.startsWith("+39") && cleaned.length === 13) {
+    return `+39 ${cleaned.slice(3, 6)} ${cleaned.slice(6, 9)} ${cleaned.slice(9)}`
+  }
+  if (cleaned.startsWith("+39") && cleaned.length >= 12) {
+    return `+39 ${cleaned.slice(3, 5)} ${cleaned.slice(5, 9)} ${cleaned.slice(9)}`
+  }
+  if (cleaned.startsWith("+")) {
+    return cleaned
+  }
+  if (cleaned.startsWith("3") && cleaned.length === 10) {
+    return `+39 ${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6)}`
+  }
+  return phone
+}
+
+function translateStatus(status: string): string {
+  const translations: Record<string, string> = {
+    "completed": "Completata",
+    "in-progress": "In Corso",
+    "failed": "Fallita",
+    "busy": "Occupato",
+    "no-answer": "Nessuna Risposta",
+    "pending": "In Attesa",
+    "unread": "Non Letto",
+    "read": "Letto",
+  }
+  return translations[status] || status
+}
+
+function shortenCallSid(callSid: string): string {
+  if (callSid.length <= 12) return callSid
+  return `${callSid.slice(0, 6)}...${callSid.slice(-6)}`
 }
 
 export function CallDetail() {
@@ -48,15 +87,22 @@ export function CallDetail() {
         <Link to="/calls">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Calls
+            Torna alle Chiamate
           </Button>
         </Link>
         <div className="text-center py-8">
-          <p className="text-destructive">Failed to load call details</p>
+          <p className="text-destructive">Impossibile caricare i dettagli della chiamata</p>
         </div>
       </div>
     )
   }
+
+  // Calculate duration from timestamps if not provided
+  const calculatedDuration = call.duration || (
+    call.endedAt
+      ? Math.floor((new Date(call.endedAt).getTime() - new Date(call.startedAt).getTime()) / 1000)
+      : null
+  )
 
   // Parse the formatted transcript into lines
   const transcriptLines = call.formattedTranscript
@@ -65,95 +111,129 @@ export function CallDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <Link to="/calls">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+          <Button variant="ghost" size="sm" className="h-9 px-2 sm:px-3">
+            <ArrowLeft className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Indietro</span>
           </Button>
         </Link>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Call Details</h1>
-          <p className="text-muted-foreground">{call.callSid}</p>
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dettagli Chiamata</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm truncate" title={call.callSid}>
+            ID: {shortenCallSid(call.callSid)}
+          </p>
         </div>
       </div>
 
       {/* Call Info */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">From</CardTitle>
+          <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+              <PhoneIncoming className="h-3 w-3 sm:h-4 sm:w-4" />
+              Da
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{call.from}</span>
-            </div>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <span className="font-medium text-sm sm:text-base break-all">{formatPhone(call.from)}</span>
           </CardContent>
         </Card>
 
+        {call.to && (
+          <Card>
+            <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
+                A
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+              <span className="font-medium text-sm sm:text-base break-all">{formatPhone(call.to)}</span>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Status</CardTitle>
+          <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium">Stato</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
             <Badge
               variant={
                 call.status === "completed"
-                  ? "success"
+                  ? "outline"
                   : call.status === "failed"
                   ? "destructive"
                   : "secondary"
               }
+              className={call.status === "completed" ? "border-emerald-500 text-emerald-600" : ""}
             >
-              {call.status}
+              {translateStatus(call.status)}
             </Badge>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Duration</CardTitle>
+          <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+              Durata
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">
-                {call.duration ? formatDuration(call.duration) : "N/A"}
-              </span>
-            </div>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <span className="font-medium text-sm sm:text-base">
+              {formatDuration(calculatedDuration || 0)}
+            </span>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Started</CardTitle>
+          <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+            <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+              Inizio
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <span className="text-sm">{formatDate(call.startedAt)}</span>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <span className="text-xs sm:text-sm">{formatDate(call.startedAt)}</span>
           </CardContent>
         </Card>
+
+        {call.endedAt && (
+          <Card>
+            <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                Fine
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+              <span className="text-xs sm:text-sm">{formatDate(call.endedAt)}</span>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Transcript Stats */}
-      {call.transcriptStats && (
+      {call.transcriptStats && (call.transcriptStats.totalMessages > 0) && (
         <Card>
-          <CardHeader>
-            <CardTitle>Conversation Stats</CardTitle>
+          <CardHeader className="px-3 sm:px-6 pt-3 sm:pt-6 pb-2 sm:pb-4">
+            <CardTitle className="text-base sm:text-lg">Statistiche Conversazione</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Messages</p>
-                <p className="text-2xl font-bold">{call.transcriptStats.totalMessages}</p>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            <div className="grid gap-3 sm:gap-4 grid-cols-3">
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Totali</p>
+                <p className="text-xl sm:text-2xl font-bold">{call.transcriptStats.totalMessages}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">User Messages</p>
-                <p className="text-2xl font-bold">{call.transcriptStats.userMessages}</p>
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Utente</p>
+                <p className="text-xl sm:text-2xl font-bold">{call.transcriptStats.userMessages}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Agent Messages</p>
-                <p className="text-2xl font-bold">{call.transcriptStats.agentMessages}</p>
+              <div className="text-center sm:text-left">
+                <p className="text-xs sm:text-sm text-muted-foreground">Agente</p>
+                <p className="text-xl sm:text-2xl font-bold">{call.transcriptStats.agentMessages}</p>
               </div>
             </div>
           </CardContent>
@@ -163,12 +243,12 @@ export function CallDetail() {
       {/* Transcript */}
       <Card>
         <CardHeader>
-          <CardTitle>Transcript</CardTitle>
-          <CardDescription>Full conversation transcript</CardDescription>
+          <CardTitle>Trascrizione</CardTitle>
+          <CardDescription>Trascrizione completa della conversazione</CardDescription>
         </CardHeader>
         <CardContent>
           {transcriptLines.length > 0 ? (
-            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+            <div className="space-y-2 sm:space-y-3 max-h-[500px] sm:max-h-[600px] overflow-y-auto scrollbar-hide -mx-2 px-2">
               {transcriptLines.map((line, index) => {
                 const isUser = line.includes("[USER]")
                 const cleanLine = line
@@ -179,36 +259,42 @@ export function CallDetail() {
                 return (
                   <div
                     key={index}
-                    className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}
+                    className={`flex gap-2 sm:gap-3 ${isUser ? "flex-row-reverse" : ""}`}
                   >
                     <div
-                      className={`p-2 rounded-full ${
+                      className={`p-1.5 sm:p-2 rounded-full shrink-0 ${
                         isUser ? "bg-primary" : "bg-muted"
                       }`}
                     >
                       {isUser ? (
-                        <User className="h-4 w-4 text-primary-foreground" />
+                        <User className="h-3 w-3 sm:h-4 sm:w-4 text-primary-foreground" />
                       ) : (
-                        <Bot className="h-4 w-4" />
+                        <Bot className="h-3 w-3 sm:h-4 sm:w-4" />
                       )}
                     </div>
                     <div
-                      className={`flex-1 p-3 rounded-lg ${
+                      className={`p-2 sm:p-3 rounded-lg max-w-[80%] sm:max-w-[85%] ${
                         isUser
-                          ? "bg-primary text-primary-foreground ml-12"
-                          : "bg-muted mr-12"
+                          ? "bg-primary text-primary-foreground ml-auto"
+                          : "bg-muted mr-auto"
                       }`}
                     >
-                      <p className="text-sm">{cleanLine}</p>
+                      <p className="text-xs sm:text-sm break-words">{cleanLine}</p>
                     </div>
                   </div>
                 )
               })}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-8">
-              No transcript available for this call
-            </p>
+            <div className="text-center py-8">
+              <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">
+                Nessuna trascrizione disponibile per questa chiamata
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                La trascrizione potrebbe non essere stata registrata o la chiamata era troppo breve
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -219,7 +305,7 @@ export function CallDetail() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PhoneCall className="h-5 w-5" />
-              Callback Requests
+              Richieste di Richiamo
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -234,23 +320,24 @@ export function CallDetail() {
                     <Badge
                       variant={
                         callback.status === "completed"
-                          ? "success"
+                          ? "outline"
                           : callback.status === "pending"
-                          ? "warning"
+                          ? "secondary"
                           : "secondary"
                       }
+                      className={callback.status === "completed" ? "border-emerald-500 text-emerald-600" : ""}
                     >
-                      {callback.status}
+                      {translateStatus(callback.status)}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {callback.callerPhone} - {callback.preferredTime}
+                    {formatPhone(callback.callerPhone)} - {callback.preferredTime}
                   </p>
                   {callback.reason && (
                     <p className="text-sm mt-1">{callback.reason}</p>
                   )}
                   <p className="text-xs text-muted-foreground mt-2">
-                    Ref: {callback.referenceNumber}
+                    Rif: {callback.referenceNumber}
                   </p>
                 </div>
               ))}
@@ -265,7 +352,7 @@ export function CallDetail() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              Messages
+              Messaggi
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -276,28 +363,29 @@ export function CallDetail() {
                   className="p-3 rounded-lg border"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">To: {message.recipientName}</span>
+                    <span className="font-medium">Per: {message.recipientName}</span>
                     <div className="flex items-center gap-2">
                       {message.urgent && (
-                        <Badge variant="destructive">Urgent</Badge>
+                        <Badge variant="destructive">Urgente</Badge>
                       )}
                       <Badge
                         variant={
                           message.status === "unread"
-                            ? "warning"
+                            ? "secondary"
                             : message.status === "read"
-                            ? "success"
+                            ? "outline"
                             : "secondary"
                         }
+                        className={message.status === "read" ? "border-emerald-500 text-emerald-600" : ""}
                       >
-                        {message.status}
+                        {translateStatus(message.status)}
                       </Badge>
                     </div>
                   </div>
-                  <p className="text-sm">From: {message.callerName} ({message.callerPhone})</p>
+                  <p className="text-sm">Da: {message.callerName} ({formatPhone(message.callerPhone)})</p>
                   <p className="text-sm mt-2 p-2 bg-muted rounded">{message.content}</p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Ref: {message.referenceNumber}
+                    Rif: {message.referenceNumber}
                   </p>
                 </div>
               ))}

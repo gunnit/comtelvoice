@@ -258,6 +258,117 @@ Call transfers require special handling for BYOC Trunk configurations:
 
 **Transfer numbers:** Use environment variables `TRANSFER_NUMBER_MAIN` and `TRANSFER_NUMBER_SUPPORT` in agent instructions for easy configuration.
 
+## Frontend Dashboard
+
+### Technology Stack
+
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui (https://ui.shadcn.com/)
+- **Data Fetching**: TanStack Query (@tanstack/react-query)
+- **Routing**: React Router DOM
+- **Icons**: Lucide React
+- **Design Reference**: Shadcn Admin (https://github.com/satnaing/shadcn-admin)
+
+### Development Commands (Frontend)
+
+```bash
+cd frontend
+npm run dev           # Start development server (port 5173)
+npm run build         # Build for production
+npm run preview       # Preview production build
+```
+
+### UI/UX Guidelines
+
+**IMPORTANT**: Always use shadcn/ui components when building or modifying the frontend UI. This ensures consistency and maintains the professional admin dashboard look.
+
+#### Component Library
+
+All UI components must come from shadcn/ui. Key components used:
+
+- **Card, CardHeader, CardTitle, CardContent, CardDescription**: Main content containers
+- **Button**: All buttons (variants: default, outline, ghost, destructive)
+- **Badge**: Status indicators (variants: default, secondary, outline, destructive)
+- **Input**: Form inputs
+- **Table**: Data display (styled with `.data-table` class)
+
+Import pattern:
+```typescript
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+```
+
+#### Design Patterns
+
+1. **Status Badges**: Use consistent color coding:
+   - Completed/Success: `variant="outline"` with `className="border-emerald-500 text-emerald-600"`
+   - Pending/Warning: `variant="secondary"`
+   - Error/Urgent: `variant="destructive"`
+
+2. **Cards**: Use for grouping related content with proper padding and spacing
+
+3. **Icons**: Always from Lucide React, 4x4 size (`h-4 w-4`) in most contexts
+
+4. **Filters**: Use Button group with active state toggle:
+   ```tsx
+   <Button
+     variant={isActive ? "default" : "outline"}
+     size="sm"
+     onClick={() => setFilter(value)}
+   >
+     {label}
+   </Button>
+   ```
+
+5. **Responsive Design**:
+   - Use mobile-first approach
+   - Hide/show elements with `hidden md:block` or `md:hidden`
+   - Flexible layouts with `flex-wrap gap-2`
+
+#### Sidebar Navigation
+
+The sidebar follows Shadcn Admin style:
+- Collapsible on desktop
+- Slide-out overlay on mobile
+- Dark theme by default with CSS variables in `--sidebar-*`
+
+#### Theme
+
+The app supports dark/light mode toggle. Theme variables are defined in `frontend/src/index.css`:
+- Light theme: Default
+- Dark theme: `.dark` class on `<html>`
+
+#### File Structure
+
+```
+frontend/
+├── src/
+│   ├── components/
+│   │   ├── ui/           # shadcn/ui components
+│   │   └── Layout.tsx    # Main layout with sidebar
+│   ├── pages/
+│   │   ├── Dashboard.tsx
+│   │   ├── Calls.tsx
+│   │   ├── CallDetail.tsx
+│   │   ├── Callbacks.tsx
+│   │   ├── Messages.tsx
+│   │   └── Search.tsx
+│   ├── lib/
+│   │   ├── api.ts        # API client
+│   │   └── utils.ts      # Utility functions
+│   ├── index.css         # Global styles + Tailwind + CSS variables
+│   └── main.tsx          # Entry point
+```
+
+#### API Integration
+
+The frontend proxies to the backend (configured in `vite.config.ts`):
+- Development: Proxies `/api/*` to Render.com backend
+- All API calls use TanStack Query for caching and state management
+
 ## Testing
 
 1. **Health Check**: `curl https://comtel-voice-agent.onrender.com/`

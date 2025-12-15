@@ -4,12 +4,25 @@ import fastifyFormBody from '@fastify/formbody';
 import fastifyWebsocket from '@fastify/websocket';
 import { RealtimeSession } from '@openai/agents/realtime';
 import { TwilioRealtimeTransportLayer } from '@openai/agents-extensions';
-import { createArthurAgent } from './agent.js';
+import { createArthurAgent, createAgentFromGlobalConfig } from './agent.js';
 import type { WebSocket } from 'ws';
 import { callService } from './db/services/calls.js';
 import { transcriptService } from './db/services/transcripts.js';
 import { callbackService } from './db/services/callbacks.js';
 import { messageService } from './db/services/messages.js';
+import { authService } from './db/services/auth.js';
+import { userService } from './db/services/users.js';
+import { authMiddleware } from './middleware/auth.js';
+import {
+  agentConfigService,
+  loadGlobalConfig,
+  updateGlobalAgentConfig,
+  updateGlobalInstructions,
+  updateGlobalKnowledgeBase,
+  updateGlobalToolConfigs,
+  GLOBAL_CONFIG_USER_ID,
+} from './db/services/agent-config.js';
+import { InstructionBuilder } from './services/instruction-builder.js';
 import { disconnectDatabase } from './db/index.js';
 import cors from '@fastify/cors';
 
@@ -53,6 +66,9 @@ await fastify.register(cors, {
   origin: ['http://localhost:5173', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE']
 });
+
+// Register authentication middleware for API routes
+fastify.addHook('preHandler', authMiddleware);
 
 /**
  * Health check endpoint
@@ -256,6 +272,20 @@ fastify.post('/transfer-complete', async (request, reply) => {
   console.log('📋 All Twilio parameters:', JSON.stringify(body, null, 2));
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+  // Save call duration to database
+  if (callSid && callDuration) {
+    try {
+      await callService.update(callSid, {
+        status: 'completed',
+        endedAt: new Date(),
+        duration: parseInt(callDuration, 10)
+      });
+      console.log('✅ Call duration saved to database:', callDuration, 'seconds');
+    } catch (error) {
+      console.error('❌ Failed to save call duration:', error);
+    }
+  }
+
   // Check if there's a pending transfer for this call
   const targetNumber = pendingTransfers.get(callSid);
 
@@ -326,19 +356,75 @@ fastify.post('/transfer-status', async (request, reply) => {
 });
 
 // ============================================
-// Dashboard API Endpoints (Read-Only)
+// Authentication API Endpoints
 // ============================================
 
 /**
- * Get recent calls with related data
+ * User login
+ * POST /api/auth/login
+ */
+fastify.post('/api/auth/login', async (request) => {
+  const { email, password } = request.body as { email: string; password: string };
+
+  if (!email || !password) {
+    return { success: false, error: 'Email e password sono richiesti' };
+  }
+
+  const result = await authService.login(email, password);
+  if (!result) {
+    return { success: false, error: 'Email o password non validi' };
+  }
+
+  return { success: true, data: result };
+});
+
+/**
+ * User logout
+ * POST /api/auth/logout
+ */
+fastify.post('/api/auth/logout', async (request) => {
+  const authHeader = request.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    await authService.logout(authHeader.substring(7));
+  }
+  return { success: true };
+});
+
+/**
+ * Get current user info
+ * GET /api/auth/me
+ */
+fastify.get('/api/auth/me', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  const user = await authService.getUserById(request.user.userId);
+  if (!user) {
+    return { success: false, error: 'Utente non trovato' };
+  }
+
+  return { success: true, data: user };
+});
+
+// ============================================
+// Dashboard API Endpoints (User-Filtered)
+// ============================================
+
+/**
+ * Get recent calls with related data (filtered by user)
  * GET /api/calls?limit=50
  */
 fastify.get('/api/calls', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
   const query = request.query as { limit?: string };
   const limit = parseInt(query.limit || '50', 10);
 
   try {
-    const calls = await callService.getRecent(limit);
+    const calls = await callService.getRecentForUser(request.user.userId, limit);
     return { success: true, data: calls };
   } catch (error) {
     console.error('API Error - /api/calls:', error);
@@ -347,16 +433,20 @@ fastify.get('/api/calls', async (request) => {
 });
 
 /**
- * Get single call with full transcript
+ * Get single call with full transcript (filtered by user)
  * GET /api/calls/:callSid
  */
 fastify.get('/api/calls/:callSid', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
   const { callSid } = request.params as { callSid: string };
 
   try {
-    const call = await callService.getBySid(callSid);
+    const call = await callService.getBySidForUser(callSid, request.user.userId);
     if (!call) {
-      return { success: false, error: 'Call not found' };
+      return { success: false, error: 'Chiamata non trovata' };
     }
 
     // Get formatted transcript for this call
@@ -378,20 +468,28 @@ fastify.get('/api/calls/:callSid', async (request) => {
 });
 
 /**
- * Search transcripts
+ * Search transcripts (filtered by user)
  * GET /api/transcripts/search?q=text&limit=50
  */
 fastify.get('/api/transcripts/search', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
   const query = request.query as { q?: string; limit?: string };
   const searchQuery = query.q || '';
   const limit = parseInt(query.limit || '50', 10);
 
   if (!searchQuery) {
-    return { success: false, error: 'Search query is required' };
+    return { success: false, error: 'La query di ricerca è richiesta' };
   }
 
   try {
-    const results = await transcriptService.searchTranscripts(searchQuery, limit);
+    const results = await transcriptService.searchTranscriptsForUser(
+      request.user.userId,
+      searchQuery,
+      limit
+    );
     return { success: true, data: results };
   } catch (error) {
     console.error('API Error - /api/transcripts/search:', error);
@@ -400,10 +498,14 @@ fastify.get('/api/transcripts/search', async (request) => {
 });
 
 /**
- * Get all callbacks
+ * Get all callbacks (filtered by user)
  * GET /api/callbacks?status=pending&limit=50
  */
 fastify.get('/api/callbacks', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
   const query = request.query as { status?: string; limit?: string };
   const status = query.status as 'pending' | 'scheduled' | 'completed' | 'cancelled' | undefined;
   const limit = parseInt(query.limit || '50', 10);
@@ -411,9 +513,9 @@ fastify.get('/api/callbacks', async (request) => {
   try {
     let callbacks;
     if (status && ['pending', 'scheduled', 'completed', 'cancelled'].includes(status)) {
-      callbacks = await callbackService.getByStatus(status, limit);
+      callbacks = await callbackService.getByStatusForUser(request.user.userId, status, limit);
     } else {
-      callbacks = await callbackService.getPending(limit);
+      callbacks = await callbackService.getAllForUser(request.user.userId, limit);
     }
     return { success: true, data: callbacks };
   } catch (error) {
@@ -423,10 +525,14 @@ fastify.get('/api/callbacks', async (request) => {
 });
 
 /**
- * Get all messages
+ * Get all messages (filtered by user)
  * GET /api/messages?status=unread&recipient=John&limit=50
  */
 fastify.get('/api/messages', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
   const query = request.query as { status?: string; recipient?: string; limit?: string };
   const { status, recipient } = query;
   const limit = parseInt(query.limit || '50', 10);
@@ -434,14 +540,14 @@ fastify.get('/api/messages', async (request) => {
   try {
     let messages;
     if (recipient) {
-      messages = await messageService.getByRecipient(recipient, limit);
+      messages = await messageService.getByRecipientForUser(request.user.userId, recipient, limit);
     } else if (status === 'unread') {
-      messages = await messageService.getUnread(limit);
+      messages = await messageService.getUnreadForUser(request.user.userId, limit);
     } else if (status === 'urgent') {
-      messages = await messageService.getUrgent(limit);
+      messages = await messageService.getUrgentForUser(request.user.userId, limit);
     } else {
-      // Get all messages - use unread as default
-      messages = await messageService.getUnread(100);
+      // Get all messages for user
+      messages = await messageService.getAllForUser(request.user.userId, limit);
     }
     return { success: true, data: messages };
   } catch (error) {
@@ -451,48 +557,30 @@ fastify.get('/api/messages', async (request) => {
 });
 
 /**
- * Get dashboard statistics
+ * Get dashboard statistics (filtered by user)
  * GET /api/stats
  */
-fastify.get('/api/stats', async () => {
+fastify.get('/api/stats', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
   try {
-    // Get recent calls for statistics
-    const recentCalls = await callService.getRecent(100);
-    const pendingCallbacks = await callbackService.getPending(100);
-    const unreadMessages = await messageService.getUnread(100);
-
-    // Calculate stats
-    const totalCalls = recentCalls.length;
-    const completedCalls = recentCalls.filter(c => c.status === 'completed').length;
-    const avgDuration = recentCalls
-      .filter(c => c.duration)
-      .reduce((sum, c) => sum + (c.duration || 0), 0) / (completedCalls || 1);
-
-    // Calls by day (last 7 days)
-    const callsByDay: Record<string, number> = {};
-    const now = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      callsByDay[dateStr] = 0;
-    }
-    for (const call of recentCalls) {
-      const dateStr = call.startedAt.toISOString().split('T')[0];
-      if (callsByDay[dateStr] !== undefined) {
-        callsByDay[dateStr]++;
-      }
-    }
+    // Get stats for user
+    const userId = request.user.userId;
+    const callStats = await callService.getStatsForUser(userId);
+    const pendingCallbacksCount = await callbackService.countPendingForUser(userId);
+    const unreadMessagesCount = await messageService.countUnreadForUser(userId);
 
     return {
       success: true,
       data: {
-        totalCalls,
-        completedCalls,
-        avgDuration: Math.round(avgDuration),
-        pendingCallbacks: pendingCallbacks.length,
-        unreadMessages: unreadMessages.length,
-        callsByDay
+        totalCalls: callStats.totalCalls,
+        completedCalls: callStats.completedCalls,
+        avgDuration: callStats.avgDuration,
+        pendingCallbacks: pendingCallbacksCount,
+        unreadMessages: unreadMessagesCount,
+        callsByDay: callStats.callsByDay
       }
     };
   } catch (error) {
@@ -503,6 +591,257 @@ fastify.get('/api/stats', async () => {
 
 // ============================================
 // End Dashboard API Endpoints
+// ============================================
+
+// ============================================
+// Agent Configuration API Endpoints
+// ============================================
+
+/**
+ * Get full agent configuration (SINGLETON - global config for all calls)
+ * GET /api/agent-config
+ */
+fastify.get('/api/agent-config', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  try {
+    // Use global config (singleton) - creates default if not exists
+    const config = await agentConfigService.getOrCreate(GLOBAL_CONFIG_USER_ID);
+    return { success: true, data: config };
+  } catch (error) {
+    console.error('API Error - /api/agent-config:', error);
+    return { success: false, error: 'Failed to fetch agent config' };
+  }
+});
+
+/**
+ * Update core agent settings (SINGLETON)
+ * PUT /api/agent-config
+ */
+fastify.put('/api/agent-config', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  try {
+    const body = request.body as Partial<{
+      agentName: string;
+      voice: string;
+      temperature: number;
+      model: string;
+      turnDetectionEnabled: boolean;
+      vadThreshold: number;
+      silenceDurationMs: number;
+      prefixPaddingMs: number;
+      greetingMessage: string;
+      greetingDelayMs: number;
+      primaryLanguage: string;
+      autoDetectLanguage: boolean;
+      transcriptionModel: string;
+    }>;
+
+    // Update global config (also refreshes cache)
+    const config = await updateGlobalAgentConfig(body);
+    return { success: true, data: config };
+  } catch (error) {
+    console.error('API Error - PUT /api/agent-config:', error);
+    return { success: false, error: 'Failed to update agent config' };
+  }
+});
+
+/**
+ * Get agent instructions (SINGLETON)
+ * GET /api/agent-config/instructions
+ */
+fastify.get('/api/agent-config/instructions', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  try {
+    const config = await agentConfigService.getFullConfig(GLOBAL_CONFIG_USER_ID);
+    return { success: true, data: config?.instructions };
+  } catch (error) {
+    console.error('API Error - /api/agent-config/instructions:', error);
+    return { success: false, error: 'Failed to fetch instructions' };
+  }
+});
+
+/**
+ * Update agent instructions (SINGLETON)
+ * PUT /api/agent-config/instructions
+ */
+fastify.put('/api/agent-config/instructions', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  try {
+    const body = request.body as Partial<{
+      useTemplate: boolean;
+      customInstructions: string;
+      roleDescription: string;
+      communicationStyle: string;
+      languageInstructions: string;
+      closingInstructions: string;
+      additionalInstructions: string;
+    }>;
+
+    // Update global instructions (also refreshes cache)
+    const instructions = await updateGlobalInstructions(body);
+    return { success: true, data: instructions };
+  } catch (error) {
+    console.error('API Error - PUT /api/agent-config/instructions:', error);
+    return { success: false, error: 'Failed to update instructions' };
+  }
+});
+
+/**
+ * Get knowledge base (SINGLETON)
+ * GET /api/agent-config/knowledge
+ */
+fastify.get('/api/agent-config/knowledge', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  try {
+    const config = await agentConfigService.getFullConfig(GLOBAL_CONFIG_USER_ID);
+    return { success: true, data: config?.knowledgeBase };
+  } catch (error) {
+    console.error('API Error - /api/agent-config/knowledge:', error);
+    return { success: false, error: 'Failed to fetch knowledge base' };
+  }
+});
+
+/**
+ * Update knowledge base (SINGLETON)
+ * PUT /api/agent-config/knowledge
+ */
+fastify.put('/api/agent-config/knowledge', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  try {
+    const body = request.body as any; // Accept all knowledge base fields
+
+    // Update global knowledge base (also refreshes cache)
+    const knowledge = await updateGlobalKnowledgeBase(body);
+    return { success: true, data: knowledge };
+  } catch (error) {
+    console.error('API Error - PUT /api/agent-config/knowledge:', error);
+    return { success: false, error: 'Failed to update knowledge base' };
+  }
+});
+
+/**
+ * Get tool configurations (SINGLETON)
+ * GET /api/agent-config/tools
+ */
+fastify.get('/api/agent-config/tools', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  try {
+    const config = await agentConfigService.getFullConfig(GLOBAL_CONFIG_USER_ID);
+    const availableTools = agentConfigService.getAvailableTools();
+
+    // Merge available tools with global config
+    const toolsWithDetails = availableTools.map(tool => {
+      const toolConfig = config?.toolConfigs?.find(tc => tc.toolName === tool.name);
+      return {
+        ...tool,
+        enabled: toolConfig?.enabled ?? true,
+        parameters: toolConfig?.parameters,
+        descriptionOverride: toolConfig?.descriptionOverride,
+      };
+    });
+
+    return { success: true, data: toolsWithDetails };
+  } catch (error) {
+    console.error('API Error - /api/agent-config/tools:', error);
+    return { success: false, error: 'Failed to fetch tool configs' };
+  }
+});
+
+/**
+ * Update tool configurations (SINGLETON)
+ * PUT /api/agent-config/tools
+ */
+fastify.put('/api/agent-config/tools', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  try {
+    const body = request.body as Array<{
+      toolName: string;
+      enabled: boolean;
+      parameters?: any;
+    }>;
+
+    // Update global tool configs (also refreshes cache)
+    const success = await updateGlobalToolConfigs(body);
+    return { success };
+  } catch (error) {
+    console.error('API Error - PUT /api/agent-config/tools:', error);
+    return { success: false, error: 'Failed to update tool configs' };
+  }
+});
+
+/**
+ * Preview built instructions (SINGLETON)
+ * GET /api/agent-config/instructions/preview
+ */
+fastify.get('/api/agent-config/instructions/preview', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  try {
+    const config = await agentConfigService.getFullConfig(GLOBAL_CONFIG_USER_ID);
+    if (!config) {
+      return { success: false, error: 'Config not found' };
+    }
+
+    const builder = new InstructionBuilder(
+      config.config,
+      config.instructions,
+      config.knowledgeBase
+    );
+    const preview = builder.build();
+
+    return { success: true, data: { instructions: preview } };
+  } catch (error) {
+    console.error('API Error - /api/agent-config/instructions/preview:', error);
+    return { success: false, error: 'Failed to build instructions preview' };
+  }
+});
+
+/**
+ * Get available template variables
+ * GET /api/agent-config/instructions/variables
+ */
+fastify.get('/api/agent-config/instructions/variables', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  return {
+    success: true,
+    data: {
+      variables: InstructionBuilder.getAvailableVariables(),
+      defaultSections: InstructionBuilder.getDefaultSections(),
+    }
+  };
+});
+
+// ============================================
+// End Agent Configuration API Endpoints
 // ============================================
 
 /**
@@ -559,16 +898,30 @@ fastify.register(async (fastifyInstance) => {
               console.log('📞 Caller info:', { from: callerNumber, to: twilioNumber });
               console.log('📌 Call state captured in memory for transfer functionality (including streamSid)');
 
-              // Save call to database (but transfer won't depend on this)
+              // Save call to database with user association
               if (callSid) {
                 try {
+                  // Look up user by the 'to' phone number
+                  let userId: string | undefined;
+                  if (twilioNumber) {
+                    const user = await userService.getUserByPhoneNumber(twilioNumber);
+                    if (user) {
+                      userId = user.id;
+                      currentUserId = user.id;  // Store for call state
+                      console.log('📊 Call associated with user:', user.email);
+                      // TODO: Load user's agent configuration dynamically
+                      // For now, using default Arthur agent for all users
+                    }
+                  }
+
                   await callService.create({
                     callSid,
                     streamSid: streamSid || undefined,
                     from: callerNumber || 'unknown',
                     to: twilioNumber || undefined,
+                    userId,
                   });
-                  console.log('📊 Call saved to database:', callSid);
+                  console.log('📊 Call saved to database:', callSid, userId ? `(user: ${userId})` : '(no user)');
                 } catch (error) {
                   console.error('⚠️  Failed to save call to database:', error);
                 }
@@ -641,29 +994,43 @@ fastify.register(async (fastifyInstance) => {
         }
       });
 
-      // Create Arthur agent with full capabilities (general + financial)
-      // Pass call state getter function for transfer functionality
-      // Note: session will be set after it's created below
+      // Variables for dynamic agent configuration
       let realtimeSession: any = null;
-      const arthurAgent = createArthurAgent(() => ({
+      let currentUserId: string | null = null;
+
+      // Create agent dynamically based on user configuration
+      // For now, use default agent since we need to wait for userId from 'start' event
+      // We'll check if user config is available when userId is determined
+      const getCallState = () => ({
         callSid,
         callerNumber,
         twilioNumber,
         streamSid,
         session: realtimeSession,
-        twilioWebSocket: ws,  // Pass WebSocket reference for manual closure
+        twilioWebSocket: ws,
         storePendingTransfer: (sid: string, target: string) => {
           pendingTransfers.set(sid, target);
-        }
-      }));
+        },
+        userId: currentUserId,
+      });
 
-      console.log('🤖 Unified agent system initialized:');
-      console.log('   - Arthur (Receptionist + Financial Assistant)');
-      console.log('   - All-in-one: General inquiries + Financial data (with access code)');
+      // Create agent from global config (or fall back to default)
+      const dynamicResult = createAgentFromGlobalConfig(getCallState);
+      const agent = dynamicResult?.agent || createArthurAgent(getCallState);
+      const activeConfig = dynamicResult?.config || null;
+
+      if (dynamicResult) {
+        console.log('🤖 Using configured agent:');
+        console.log(`   - Name: ${activeConfig?.config.agentName}`);
+        console.log(`   - Voice: ${activeConfig?.config.voice}`);
+        console.log(`   - Greeting: "${activeConfig?.config.greetingMessage}"`);
+      } else {
+        console.log('🤖 Using default Arthur agent (no config cached)');
+      }
 
       // Create Realtime session with Twilio transport
       // Enable user audio transcription via config
-      const session = new RealtimeSession(arthurAgent, {
+      const session = new RealtimeSession(agent, {
         transport,
         model: 'gpt-realtime',
         config: {
@@ -698,8 +1065,12 @@ fastify.register(async (fastifyInstance) => {
       console.log('🔐 Financial data protection: Access code verification enabled');
 
       // Trigger greeting after OpenAI connection is established
-      // Wait 200ms to ensure Twilio 'start' event has been processed (so we have callSid)
-      setTimeout(() => {
+      // Wait for Twilio 'start' event to be processed (so we have callSid)
+      // Use config values or defaults
+      const greetingDelayMs = activeConfig?.config?.greetingDelayMs || 200;
+      const greetingMessage = activeConfig?.config?.greetingMessage || 'Ciao';
+
+      setTimeout(async () => {
         if (!greetingTriggered && callSid) {
           greetingTriggered = true;
 
@@ -714,7 +1085,7 @@ fastify.register(async (fastifyInstance) => {
               role: 'user',
               content: [{
                 type: 'input_text',
-                text: 'Ciao'  // Simple greeting to trigger agent's response
+                text: greetingMessage
               }]
             }
           });
@@ -726,7 +1097,7 @@ fastify.register(async (fastifyInstance) => {
         } else if (!callSid) {
           console.warn('⚠️  Cannot send greeting: callSid not set yet');
         }
-      }, 200);
+      }, greetingDelayMs);
 
       // Listen for all session events to capture transcripts
       console.log('📝 Setting up transcript event listeners');
@@ -841,6 +1212,15 @@ fastify.register(async (fastifyInstance) => {
  */
 const start = async () => {
   try {
+    // Load global agent config at startup
+    console.log('\n🔧 Loading agent configuration...');
+    const globalConfig = await loadGlobalConfig();
+    if (globalConfig) {
+      console.log(`✅ Agent config loaded: ${globalConfig.config.agentName}`);
+    } else {
+      console.log('⚠️ Using default agent configuration');
+    }
+
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
     console.log('\n🚀 Comtel Voice Agent Server Started\n');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -852,10 +1232,15 @@ const start = async () => {
     console.log(`  - Incoming Call: POST https://${SERVER_URL}/incoming-call`);
     console.log(`  - Transfer Complete: POST https://${SERVER_URL}/transfer-complete`);
     console.log(`  - Media Stream: WSS wss://${SERVER_URL}/media-stream`);
-    console.log('\n🤖 Unified Agent System:');
-    console.log('   - Arthur (All-in-One Agent)');
-    console.log('   - Capabilities: General inquiries + Financial data');
-    console.log('   - Security: Access code verification for financial data');
+    console.log('\n🤖 Agent Configuration:');
+    if (globalConfig) {
+      console.log(`   - Name: ${globalConfig.config.agentName}`);
+      console.log(`   - Voice: ${globalConfig.config.voice}`);
+      console.log(`   - Tools: ${globalConfig.toolConfigs.filter(t => t.enabled).length} enabled`);
+      console.log(`   - Financial Access: ${globalConfig.knowledgeBase?.financialAccessEnabled ? 'Enabled' : 'Disabled'}`);
+    } else {
+      console.log('   - Using default Arthur agent');
+    }
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     console.log('💡 Configure Twilio webhook:');
     console.log(`   https://${SERVER_URL}/incoming-call\n`);

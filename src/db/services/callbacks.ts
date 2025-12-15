@@ -8,6 +8,7 @@ export interface CreateCallbackInput {
   reason?: string;
   callSid?: string;
   priority?: 'normal' | 'high' | 'urgent';
+  userId?: string;
 }
 
 export interface UpdateCallbackInput {
@@ -35,13 +36,19 @@ export const callbackService = {
    */
   async create(data: CreateCallbackInput): Promise<Callback> {
     try {
-      // Get callId if callSid is provided
+      // Get callId and userId from call if callSid is provided
       let callId: string | undefined;
+      let userId = data.userId;
+
       if (data.callSid) {
         const call = await prisma.call.findUnique({
           where: { callSid: data.callSid },
         });
         callId = call?.id;
+        // Inherit userId from call if not explicitly provided
+        if (!userId && call?.userId) {
+          userId = call.userId;
+        }
       }
 
       const callback = await prisma.callback.create({
@@ -53,10 +60,11 @@ export const callbackService = {
           reason: data.reason,
           priority: data.priority || 'normal',
           callId,
+          userId,
         },
       });
 
-      console.log('✅ Callback request saved:', {
+      console.log('Callback request saved:', {
         referenceNumber: callback.referenceNumber,
         callerName: callback.callerName,
         preferredTime: callback.preferredTime,
@@ -64,7 +72,7 @@ export const callbackService = {
 
       return callback;
     } catch (error) {
-      console.error('❌ Failed to create callback:', error);
+      console.error('Failed to create callback:', error);
       throw error;
     }
   },
@@ -82,7 +90,7 @@ export const callbackService = {
         data,
       });
     } catch (error) {
-      console.error(`❌ Failed to update callback ${referenceNumber}:`, error);
+      console.error(`Failed to update callback ${referenceNumber}:`, error);
       return null;
     }
   },
@@ -97,13 +105,13 @@ export const callbackService = {
         include: { call: true },
       });
     } catch (error) {
-      console.error(`❌ Failed to fetch callback ${referenceNumber}:`, error);
+      console.error(`Failed to fetch callback ${referenceNumber}:`, error);
       return null;
     }
   },
 
   /**
-   * Get pending callbacks
+   * Get pending callbacks (no user filter)
    */
   async getPending(limit: number = 100): Promise<Callback[]> {
     try {
@@ -114,13 +122,30 @@ export const callbackService = {
         include: { call: true },
       });
     } catch (error) {
-      console.error('❌ Failed to fetch pending callbacks:', error);
+      console.error('Failed to fetch pending callbacks:', error);
       return [];
     }
   },
 
   /**
-   * Get callbacks by status
+   * Get pending callbacks for a specific user
+   */
+  async getPendingForUser(userId: string, limit: number = 100): Promise<Callback[]> {
+    try {
+      return await prisma.callback.findMany({
+        where: { userId, status: 'pending' },
+        orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+        take: limit,
+        include: { call: true },
+      });
+    } catch (error) {
+      console.error(`Failed to fetch pending callbacks for user ${userId}:`, error);
+      return [];
+    }
+  },
+
+  /**
+   * Get callbacks by status (no user filter)
    */
   async getByStatus(
     status: 'pending' | 'scheduled' | 'completed' | 'cancelled',
@@ -134,8 +159,60 @@ export const callbackService = {
         include: { call: true },
       });
     } catch (error) {
-      console.error(`❌ Failed to fetch callbacks with status ${status}:`, error);
+      console.error(`Failed to fetch callbacks with status ${status}:`, error);
       return [];
+    }
+  },
+
+  /**
+   * Get callbacks by status for a specific user
+   */
+  async getByStatusForUser(
+    userId: string,
+    status: 'pending' | 'scheduled' | 'completed' | 'cancelled',
+    limit: number = 100
+  ): Promise<Callback[]> {
+    try {
+      return await prisma.callback.findMany({
+        where: { userId, status },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        include: { call: true },
+      });
+    } catch (error) {
+      console.error(`Failed to fetch callbacks for user ${userId}:`, error);
+      return [];
+    }
+  },
+
+  /**
+   * Get all callbacks for a user
+   */
+  async getAllForUser(userId: string, limit: number = 100): Promise<Callback[]> {
+    try {
+      return await prisma.callback.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        include: { call: true },
+      });
+    } catch (error) {
+      console.error(`Failed to fetch all callbacks for user ${userId}:`, error);
+      return [];
+    }
+  },
+
+  /**
+   * Count pending callbacks for a user
+   */
+  async countPendingForUser(userId: string): Promise<number> {
+    try {
+      return await prisma.callback.count({
+        where: { userId, status: 'pending' },
+      });
+    } catch (error) {
+      console.error(`Failed to count pending callbacks for user ${userId}:`, error);
+      return 0;
     }
   },
 };

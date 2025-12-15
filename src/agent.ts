@@ -1,6 +1,12 @@
 import { RealtimeAgent, RealtimeSession } from '@openai/agents/realtime';
 import { createComtelTools } from './tools.js';
 import { financialTools } from './financial-tools.js';
+import {
+  getCachedConfig,
+  type FullAgentConfig
+} from './db/services/agent-config.js';
+import { InstructionBuilder } from './services/instruction-builder.js';
+import { createDynamicTools } from './tools-dynamic.js';
 
 /**
  * Call state interface for transfer functionality
@@ -13,6 +19,7 @@ export interface CallState {
   session: RealtimeSession | null;  // Session reference for disconnecting during transfer
   twilioWebSocket: any;  // Direct WebSocket reference for manual closure during transfer
   storePendingTransfer: (callSid: string, targetNumber: string) => void;  // Function to store pending transfer
+  userId: string | null;  // User ID for config lookup
 }
 
 /**
@@ -346,3 +353,83 @@ export const agentConfig = {
   temperature: 0.2,
   instructions: ARTHUR_INSTRUCTIONS
 };
+
+/**
+ * Result of creating an agent from configuration
+ */
+export interface DynamicAgentResult {
+  agent: RealtimeAgent;
+  config: FullAgentConfig;
+}
+
+/**
+ * Create agent from the global cached configuration
+ * This is the main entry point for creating agents in single-tenant mode
+ *
+ * @param getCallState - Function to retrieve the current call state for transfers
+ * @returns Agent and config if cached config is available, null otherwise
+ */
+export function createAgentFromGlobalConfig(
+  getCallState: () => CallState
+): DynamicAgentResult | null {
+  const cachedConfig = getCachedConfig();
+
+  if (!cachedConfig) {
+    console.warn('⚠️ No cached config available, falling back to default agent');
+    return null;
+  }
+
+  const { config, instructions, knowledgeBase, toolConfigs } = cachedConfig;
+
+  // Build instructions from template/custom
+  const instructionBuilder = new InstructionBuilder(config, instructions, knowledgeBase);
+  const builtInstructions = instructionBuilder.build();
+
+  // Create dynamic tools based on configuration
+  const tools = createDynamicTools(
+    getCallState,
+    knowledgeBase,
+    toolConfigs,
+    knowledgeBase?.financialAccessEnabled ?? false
+  );
+
+  // Create the agent with global settings
+  const agent = new RealtimeAgent({
+    name: config.agentName,
+    instructions: builtInstructions,
+    tools,
+    voice: config.voice as any, // Voice options: alloy, echo, shimmer, verse, coral, sage
+  });
+
+  console.log(`✓ Agent "${config.agentName}" created from global config`);
+  console.log(`  - Voice: ${config.voice}`);
+  console.log(`  - Temperature: ${config.temperature}`);
+  console.log(`  - Tools: ${tools.length} enabled`);
+  console.log(`  - Template mode: ${instructions?.useTemplate ?? true}`);
+  console.log(`  - Financial access: ${knowledgeBase?.financialAccessEnabled ? 'enabled' : 'disabled'}`);
+
+  return { agent, config: cachedConfig };
+}
+
+/**
+ * Create default Arthur agent (fallback for users without config or errors)
+ * This uses the hardcoded configuration for backwards compatibility
+ *
+ * @param getCallState - Function to retrieve the current call state for transfers
+ */
+export function createDefaultAgent(getCallState: () => CallState): RealtimeAgent {
+  const tools = [...createComtelTools(getCallState), ...financialTools];
+
+  const agent = new RealtimeAgent({
+    name: 'Arthur',
+    instructions: ARTHUR_INSTRUCTIONS,
+    tools,
+    voice: 'verse',
+  });
+
+  console.log('✓ Default Arthur agent created (fallback mode)');
+  console.log(`  - Voice: verse`);
+  console.log(`  - Tools: ${tools.length} available`);
+
+  return agent;
+}
