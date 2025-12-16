@@ -695,7 +695,7 @@ export function LandingPage() {
                                 <GlassCard className="p-6 text-center" hover={false}>
                                     <stat.icon className="w-6 h-6 mx-auto mb-3 text-violet-400" />
                                     <div className="text-3xl lg:text-4xl font-bold text-white mb-1">
-                                        <AnimatedCounter target={stat.value} suffix={stat.suffix} prefix={stat.prefix} />
+                                        <AnimatedCounter target={stat.value} suffix={stat.suffix} />
                                     </div>
                                     <p className="text-slate-400 text-sm">{stat.label}</p>
                                 </GlassCard>
