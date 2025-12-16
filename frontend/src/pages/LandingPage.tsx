@@ -528,6 +528,10 @@ export function LandingPage() {
                             FAQ
                             <span className="absolute -bottom-1 left-0 w-0 h-px bg-gradient-to-r from-violet-500 to-cyan-500 group-hover:w-full transition-all duration-300" />
                         </a>
+                        <Link to="/login" className="hover:text-white transition-colors relative group">
+                            Accedi
+                            <span className="absolute -bottom-1 left-0 w-0 h-px bg-gradient-to-r from-violet-500 to-cyan-500 group-hover:w-full transition-all duration-300" />
+                        </Link>
                         <MagneticButton className="px-5 py-2.5 rounded-full text-sm" variant="primary" onClick={openDemoModal}>
                             <span className="relative z-10 flex items-center gap-2">
                                 Richiedi Demo <Sparkles className="w-4 h-4" />
@@ -552,6 +556,7 @@ export function LandingPage() {
                         <a href="#features" className="text-slate-300 hover:text-white py-2" onClick={() => setIsMenuOpen(false)}>Funzionalità</a>
                         <a href="#pricing" className="text-slate-300 hover:text-white py-2" onClick={() => setIsMenuOpen(false)}>Prezzi</a>
                         <a href="#faq" className="text-slate-300 hover:text-white py-2" onClick={() => setIsMenuOpen(false)}>FAQ</a>
+                        <Link to="/login" className="text-slate-300 hover:text-white py-2" onClick={() => setIsMenuOpen(false)}>Accedi</Link>
                         <button
                             className="bg-white text-slate-950 px-5 py-3 rounded-xl font-semibold w-full mt-2"
                             onClick={() => { setIsMenuOpen(false); openDemoModal(); }}
