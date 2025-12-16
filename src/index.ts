@@ -279,22 +279,24 @@ fastify.post('/transfer-complete', async (request, reply) => {
   console.log('📋 All Twilio parameters:', JSON.stringify(body, null, 2));
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  // Save call duration to database
+  // Check if there's a pending transfer for this call
+  const targetNumber = pendingTransfers.get(callSid);
+
+  // Save call duration to database with appropriate status
   if (callSid && callDuration) {
     try {
+      // Set status to 'transferred' if there's a pending transfer, otherwise 'completed'
+      const status = targetNumber ? 'transferred' : 'completed';
       await callService.update(callSid, {
-        status: 'completed',
+        status,
         endedAt: new Date(),
         duration: parseInt(callDuration, 10)
       });
-      console.log('✅ Call duration saved to database:', callDuration, 'seconds');
+      console.log(`✅ Call ${status} - duration saved to database:`, callDuration, 'seconds');
     } catch (error) {
-      console.error('❌ Failed to save call duration:', error);
+      console.error('❌ Failed to save call status/duration:', error);
     }
   }
-
-  // Check if there's a pending transfer for this call
-  const targetNumber = pendingTransfers.get(callSid);
 
   if (targetNumber) {
     // Transfer is pending - return BYOC Dial TwiML
@@ -501,7 +503,12 @@ fastify.get('/api/transcripts/search', async (request) => {
       searchQuery,
       limit
     );
-    return { success: true, data: results };
+    // Map results to include callSid for frontend navigation
+    const mappedResults = results.map((transcript: any) => ({
+      ...transcript,
+      callSid: transcript.call?.callSid || null,
+    }));
+    return { success: true, data: mappedResults };
   } catch (error) {
     console.error('API Error - /api/transcripts/search:', error);
     return { success: false, error: 'Failed to search transcripts' };
@@ -536,6 +543,81 @@ fastify.get('/api/callbacks', async (request) => {
 });
 
 /**
+ * Mark callback as completed
+ * PUT /api/callbacks/:referenceNumber/complete
+ */
+fastify.put('/api/callbacks/:referenceNumber/complete', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  const { referenceNumber } = request.params as { referenceNumber: string };
+
+  try {
+    // First verify the callback belongs to this user
+    const callback = await callbackService.getByReference(referenceNumber);
+    if (!callback) {
+      return { success: false, error: 'Callback non trovato' };
+    }
+    if (callback.userId !== request.user.userId) {
+      return { success: false, error: 'Non autorizzato' };
+    }
+
+    const updated = await callbackService.update(referenceNumber, {
+      status: 'completed',
+      completedAt: new Date(),
+    });
+
+    if (!updated) {
+      return { success: false, error: 'Impossibile aggiornare il callback' };
+    }
+
+    console.log(`✅ Callback ${referenceNumber} marked as completed`);
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error(`API Error - /api/callbacks/${referenceNumber}/complete:`, error);
+    return { success: false, error: 'Failed to complete callback' };
+  }
+});
+
+/**
+ * Cancel callback
+ * PUT /api/callbacks/:referenceNumber/cancel
+ */
+fastify.put('/api/callbacks/:referenceNumber/cancel', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  const { referenceNumber } = request.params as { referenceNumber: string };
+
+  try {
+    // First verify the callback belongs to this user
+    const callback = await callbackService.getByReference(referenceNumber);
+    if (!callback) {
+      return { success: false, error: 'Callback non trovato' };
+    }
+    if (callback.userId !== request.user.userId) {
+      return { success: false, error: 'Non autorizzato' };
+    }
+
+    const updated = await callbackService.update(referenceNumber, {
+      status: 'cancelled',
+    });
+
+    if (!updated) {
+      return { success: false, error: 'Impossibile annullare il callback' };
+    }
+
+    console.log(`❌ Callback ${referenceNumber} cancelled`);
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error(`API Error - /api/callbacks/${referenceNumber}/cancel:`, error);
+    return { success: false, error: 'Failed to cancel callback' };
+  }
+});
+
+/**
  * Get all messages (filtered by user)
  * GET /api/messages?status=unread&recipient=John&limit=50
  */
@@ -564,6 +646,41 @@ fastify.get('/api/messages', async (request) => {
   } catch (error) {
     console.error('API Error - /api/messages:', error);
     return { success: false, error: 'Failed to fetch messages' };
+  }
+});
+
+/**
+ * Mark message as read
+ * PUT /api/messages/:referenceNumber/read
+ */
+fastify.put('/api/messages/:referenceNumber/read', async (request) => {
+  if (!request.user) {
+    return { success: false, error: 'Non autenticato' };
+  }
+
+  const { referenceNumber } = request.params as { referenceNumber: string };
+
+  try {
+    // First verify the message belongs to this user
+    const message = await messageService.getByReference(referenceNumber);
+    if (!message) {
+      return { success: false, error: 'Messaggio non trovato' };
+    }
+    if (message.userId !== request.user.userId) {
+      return { success: false, error: 'Non autorizzato' };
+    }
+
+    const updated = await messageService.markAsRead(referenceNumber);
+
+    if (!updated) {
+      return { success: false, error: 'Impossibile aggiornare il messaggio' };
+    }
+
+    console.log(`📖 Message ${referenceNumber} marked as read`);
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error(`API Error - /api/messages/${referenceNumber}/read:`, error);
+    return { success: false, error: 'Failed to mark message as read' };
   }
 });
 

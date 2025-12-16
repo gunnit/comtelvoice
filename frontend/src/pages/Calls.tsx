@@ -51,6 +51,7 @@ function translateStatus(status: string): string {
   const translations: Record<string, string> = {
     "completed": "Completata",
     "in-progress": "In corso",
+    "transferred": "Trasferita",
     "failed": "Fallita",
     "busy": "Occupato",
     "no-answer": "Nessuna risposta",
@@ -61,6 +62,7 @@ function translateStatus(status: string): string {
 const statusFilters = [
   { value: "", label: "Tutte" },
   { value: "completed", label: "Completate" },
+  { value: "transferred", label: "Trasferite" },
   { value: "in-progress", label: "In Corso" },
   { value: "failed", label: "Fallite" },
 ]
@@ -178,13 +180,19 @@ export function Calls() {
                         <td>
                           <Badge
                             variant={
-                              call.status === "completed"
+                              call.status === "completed" || call.status === "transferred"
                                 ? "outline"
                                 : call.status === "failed"
                                   ? "destructive"
                                   : "secondary"
                             }
-                            className={call.status === "completed" ? "border-emerald-500 text-emerald-600" : ""}
+                            className={
+                              call.status === "completed"
+                                ? "border-emerald-500 text-emerald-600"
+                                : call.status === "transferred"
+                                  ? "border-blue-500 text-blue-600"
+                                  : ""
+                            }
                           >
                             {translateStatus(call.status)}
                           </Badge>
@@ -226,13 +234,19 @@ export function Calls() {
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge
                         variant={
-                          call.status === "completed"
+                          call.status === "completed" || call.status === "transferred"
                             ? "outline"
                             : call.status === "failed"
                               ? "destructive"
                               : "secondary"
                         }
-                        className={call.status === "completed" ? "border-emerald-500 text-emerald-600" : ""}
+                        className={
+                          call.status === "completed"
+                            ? "border-emerald-500 text-emerald-600"
+                            : call.status === "transferred"
+                              ? "border-blue-500 text-blue-600"
+                              : ""
+                        }
                       >
                         {translateStatus(call.status)}
                       </Badge>

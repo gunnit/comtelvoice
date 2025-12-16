@@ -137,13 +137,15 @@ export function Search() {
                           </p>
                         </div>
                       </div>
-                      <Link
-                        to={`/calls/${transcript.callId}`}
-                        className="flex items-center gap-1 text-sm text-primary hover:underline whitespace-nowrap shrink-0"
-                      >
-                        <span className="hidden sm:inline">Vedi chiamata</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
+                      {transcript.callSid && (
+                        <Link
+                          to={`/calls/${transcript.callSid}`}
+                          className="flex items-center gap-1 text-sm text-primary hover:underline whitespace-nowrap shrink-0"
+                        >
+                          <span className="hidden sm:inline">Vedi chiamata</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      )}
                     </div>
                   </div>
                 ))}

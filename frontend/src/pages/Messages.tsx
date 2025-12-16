@@ -3,7 +3,7 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { getMessages, type Message } from "@/lib/api"
+import { getMessages, markMessageRead, type Message } from "@/lib/api"
 import { MessageSquare, AlertTriangle, User, Check, Mail, MailOpen, Filter } from "lucide-react"
 
 function formatDate(dateStr: string): string {
@@ -64,10 +64,7 @@ export function Messages() {
   })
 
   const markAsReadMutation = useMutation({
-    mutationFn: async (messageId: string) => {
-      console.log(`Marking message ${messageId} as read`)
-      return { success: true }
-    },
+    mutationFn: (referenceNumber: string) => markMessageRead(referenceNumber),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["messages"] })
       queryClient.invalidateQueries({ queryKey: ["stats"] })
@@ -205,7 +202,7 @@ export function Messages() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => markAsReadMutation.mutate(message.id)}
+                          onClick={() => markAsReadMutation.mutate(message.referenceNumber)}
                           disabled={markAsReadMutation.isPending}
                         >
                           <Check className="h-3 w-3 mr-1" />

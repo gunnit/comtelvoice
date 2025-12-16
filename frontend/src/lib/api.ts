@@ -29,6 +29,7 @@ export interface Transcript {
   timestamp: string;
   confidence?: number;
   callId: string;
+  callSid?: string; // Added for search results navigation
 }
 
 export interface Callback {

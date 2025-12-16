@@ -52,6 +52,7 @@ function translateStatus(status: string): string {
   const translations: Record<string, string> = {
     "completed": "Completata",
     "in-progress": "In Corso",
+    "transferred": "Trasferita",
     "failed": "Fallita",
     "busy": "Occupato",
     "no-answer": "Nessuna Risposta",
@@ -484,13 +485,19 @@ export function CallDetail() {
           <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
             <Badge
               variant={
-                call.status === "completed"
+                call.status === "completed" || call.status === "transferred"
                   ? "outline"
                   : call.status === "failed"
                   ? "destructive"
                   : "secondary"
               }
-              className={call.status === "completed" ? "border-emerald-500 text-emerald-600" : ""}
+              className={
+                call.status === "completed"
+                  ? "border-emerald-500 text-emerald-600"
+                  : call.status === "transferred"
+                  ? "border-blue-500 text-blue-600"
+                  : ""
+              }
             >
               {translateStatus(call.status)}
             </Badge>

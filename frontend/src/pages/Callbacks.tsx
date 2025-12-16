@@ -3,7 +3,7 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { getCallbacks, type Callback } from "@/lib/api"
+import { getCallbacks, markCallbackComplete, cancelCallback, type Callback } from "@/lib/api"
 import { PhoneCall, Clock, User, AlertCircle, AlertTriangle, Check, X, Filter } from "lucide-react"
 
 function formatDate(dateStr: string): string {
@@ -109,10 +109,7 @@ export function Callbacks() {
   })
 
   const markCompletedMutation = useMutation({
-    mutationFn: async (callbackId: string) => {
-      console.log(`Marking callback ${callbackId} as completed`)
-      return { success: true }
-    },
+    mutationFn: (referenceNumber: string) => markCallbackComplete(referenceNumber),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["callbacks"] })
       queryClient.invalidateQueries({ queryKey: ["stats"] })
@@ -120,10 +117,7 @@ export function Callbacks() {
   })
 
   const cancelMutation = useMutation({
-    mutationFn: async (callbackId: string) => {
-      console.log(`Cancelling callback ${callbackId}`)
-      return { success: true }
-    },
+    mutationFn: (referenceNumber: string) => cancelCallback(referenceNumber),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["callbacks"] })
       queryClient.invalidateQueries({ queryKey: ["stats"] })
@@ -305,7 +299,7 @@ export function Callbacks() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => markCompletedMutation.mutate(callback.id)}
+                              onClick={() => markCompletedMutation.mutate(callback.referenceNumber)}
                               disabled={markCompletedMutation.isPending}
                               className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
                             >
@@ -315,7 +309,7 @@ export function Callbacks() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => cancelMutation.mutate(callback.id)}
+                              onClick={() => cancelMutation.mutate(callback.referenceNumber)}
                               disabled={cancelMutation.isPending}
                               className="text-destructive border-destructive/30 hover:bg-destructive/5"
                             >
