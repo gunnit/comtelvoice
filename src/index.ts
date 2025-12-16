@@ -1312,15 +1312,30 @@ fastify.register(async (fastifyInstance) => {
               if (callSid) {
                 console.log(`📞 Call ${callSid} - media stream ended`);
 
-                // Update call status to completed
-                try {
-                  await callService.update(callSid, {
-                    status: 'completed',
-                    endedAt: new Date(),
-                  });
-                  console.log('📊 Call status updated to completed:', callSid);
-                } catch (error) {
-                  console.error('⚠️  Failed to update call status:', error);
+                // Check if this is a transfer - if so, don't overwrite with 'completed'
+                // Check both: pendingTransfers (if 'stop' fires first) and database status (if /transfer-complete fired first)
+                const isPendingTransfer = pendingTransfers.has(callSid);
+
+                if (isPendingTransfer) {
+                  console.log('🔄 Call is being transferred - status will be set by /transfer-complete');
+                } else {
+                  // Check if /transfer-complete already set the status to 'transferred'
+                  // This handles the race condition where /transfer-complete fires before 'stop'
+                  try {
+                    const existingCall = await callService.getBySid(callSid);
+                    if (existingCall?.status === 'transferred') {
+                      console.log('🔄 Call already marked as transferred - not overwriting');
+                    } else {
+                      // Only update to 'completed' if not already transferred
+                      await callService.update(callSid, {
+                        status: 'completed',
+                        endedAt: new Date(),
+                      });
+                      console.log('📊 Call status updated to completed:', callSid);
+                    }
+                  } catch (error) {
+                    console.error('⚠️  Failed to update call status:', error);
+                  }
                 }
               }
               break;
