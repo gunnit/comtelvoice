@@ -301,9 +301,13 @@ model KnowledgeBase {
   // FAQs (stored as JSON array)
   faqs                   Json?    // [{ "question": "...", "answer": "..." }, ...]
 
-  // Transfer numbers
+  // Transfer numbers (legacy - kept for backward compatibility)
   transferNumberMain     String?
   transferNumberSupport  String?
+
+  // Transfer destinations (new flexible system)
+  // JSON array: [{ id, department, name?, number, enabled }]
+  transferDestinations   Json?
 
   // Financial access (if enabled)
   financialAccessEnabled Boolean  @default(false)

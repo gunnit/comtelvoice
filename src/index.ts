@@ -1319,19 +1319,24 @@ fastify.register(async (fastifyInstance) => {
                 if (isPendingTransfer) {
                   console.log('🔄 Call is being transferred - status will be set by /transfer-complete');
                 } else {
+                  // Wait a moment for /transfer-complete to potentially update the status first
+                  // This handles the race condition where /transfer-complete fires around the same time as 'stop'
+                  await new Promise(resolve => setTimeout(resolve, 500));
+
                   // Check if /transfer-complete already set the status to 'transferred'
-                  // This handles the race condition where /transfer-complete fires before 'stop'
                   try {
                     const existingCall = await callService.getBySid(callSid);
                     if (existingCall?.status === 'transferred') {
                       console.log('🔄 Call already marked as transferred - not overwriting');
-                    } else {
-                      // Only update to 'completed' if not already transferred
+                    } else if (existingCall?.status === 'in-progress') {
+                      // Only update to 'completed' if still in-progress (not already transferred)
                       await callService.update(callSid, {
                         status: 'completed',
                         endedAt: new Date(),
                       });
                       console.log('📊 Call status updated to completed:', callSid);
+                    } else {
+                      console.log(`📊 Call status is already '${existingCall?.status}' - not changing`);
                     }
                   } catch (error) {
                     console.error('⚠️  Failed to update call status:', error);

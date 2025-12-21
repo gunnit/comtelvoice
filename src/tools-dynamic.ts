@@ -354,14 +354,65 @@ function createTakeMessageTool() {
 }
 
 /**
+ * Transfer destination structure (matches instruction-builder.ts)
+ */
+interface TransferDestination {
+  id: string;
+  department: string;
+  name?: string;
+  number: string;
+  enabled: boolean;
+}
+
+/**
+ * Find matching transfer destination from the destinations array
+ */
+function findTransferDestination(
+  targetInput: string,
+  destinations: TransferDestination[]
+): TransferDestination | null {
+  const lowerInput = targetInput.toLowerCase().trim();
+
+  // Filter only enabled destinations
+  const enabledDestinations = destinations.filter(d => d.enabled);
+
+  // Try to find by exact department match first
+  for (const dest of enabledDestinations) {
+    if (dest.department.toLowerCase() === lowerInput) {
+      return dest;
+    }
+  }
+
+  // Try to find by partial department match
+  for (const dest of enabledDestinations) {
+    if (dest.department.toLowerCase().includes(lowerInput) ||
+        lowerInput.includes(dest.department.toLowerCase())) {
+      return dest;
+    }
+  }
+
+  // Try to find by name match
+  for (const dest of enabledDestinations) {
+    if (dest.name && (
+        dest.name.toLowerCase().includes(lowerInput) ||
+        lowerInput.includes(dest.name.toLowerCase())
+    )) {
+      return dest;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Create Transfer Call tool with dynamic transfer numbers
  */
 function createTransferCallTool(getCallState: () => CallState, knowledge: KnowledgeBase | null) {
   return tool({
     name: 'transfer_call',
-    description: 'Trasferisce la chiamata attiva a un numero di telefono specifico',
+    description: 'Trasferisce la chiamata attiva a un numero di telefono specifico o a un reparto configurato',
     parameters: z.object({
-      targetNumber: z.string().describe('Numero di telefono di destinazione o alias (vendite, supporto)'),
+      targetNumber: z.string().describe('Numero di telefono, nome reparto o alias (es: "Supporto Tecnico", "vendite", "+390220527877")'),
       reason: z.string().nullable().optional().describe('Motivo del trasferimento'),
     }),
     execute: async ({ targetNumber, reason }: { targetNumber: string; reason?: string | null }) => {
@@ -372,22 +423,43 @@ function createTransferCallTool(getCallState: () => CallState, knowledge: Knowle
         return JSON.stringify({ success: false, error: 'Call/Stream SID non disponibile' });
       }
 
-      // Resolve transfer number aliases
+      // Get transfer destinations from knowledge base
+      const transferDestinations: TransferDestination[] =
+        (knowledge?.transferDestinations as unknown as TransferDestination[]) || [];
+
+      // Resolve transfer number - priority order:
+      // 1. Check if it's already a valid phone number (starts with + or contains digits)
+      // 2. Look up in dynamic transfer destinations
+      // 3. Fall back to legacy aliases (support, vendite, etc.)
       let resolvedNumber = targetNumber;
       const lowerTarget = targetNumber.toLowerCase();
 
-      if (lowerTarget.includes('support') || lowerTarget.includes('tecnico') || lowerTarget.includes('assistenza')) {
-        resolvedNumber = knowledge?.transferNumberSupport || process.env.TRANSFER_NUMBER_SUPPORT || targetNumber;
-      } else if (
-        lowerTarget.includes('main') ||
-        lowerTarget.includes('vendite') ||
-        lowerTarget.includes('commerciale') ||
-        lowerTarget.includes('generale')
-      ) {
-        resolvedNumber = knowledge?.transferNumberMain || process.env.TRANSFER_NUMBER_MAIN || targetNumber;
+      // Check if input looks like a phone number
+      const isPhoneNumber = /^[+\d]/.test(targetNumber.trim());
+
+      if (!isPhoneNumber) {
+        // Try to find in dynamic transfer destinations first
+        const matchedDestination = findTransferDestination(targetNumber, transferDestinations);
+
+        if (matchedDestination) {
+          resolvedNumber = matchedDestination.number;
+          console.log(`📍 Matched transfer destination: ${matchedDestination.department} → ${resolvedNumber}`);
+        } else {
+          // Fall back to legacy aliases
+          if (lowerTarget.includes('support') || lowerTarget.includes('tecnico') || lowerTarget.includes('assistenza')) {
+            resolvedNumber = knowledge?.transferNumberSupport || process.env.TRANSFER_NUMBER_SUPPORT || targetNumber;
+          } else if (
+            lowerTarget.includes('main') ||
+            lowerTarget.includes('vendite') ||
+            lowerTarget.includes('commerciale') ||
+            lowerTarget.includes('generale')
+          ) {
+            resolvedNumber = knowledge?.transferNumberMain || process.env.TRANSFER_NUMBER_MAIN || targetNumber;
+          }
+        }
       }
 
-      console.log('🔄 Transfer initiated:', { callSid, target: resolvedNumber, reason });
+      console.log('🔄 Transfer initiated:', { callSid, target: resolvedNumber, reason, originalInput: targetNumber });
 
       try {
         // Store the pending transfer

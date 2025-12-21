@@ -219,6 +219,17 @@ export interface AgentInstructions {
   updatedAt: string;
 }
 
+/**
+ * Transfer destination structure for call routing
+ */
+export interface TransferDestination {
+  id: string;
+  department: string;
+  name?: string;
+  number: string;
+  enabled: boolean;
+}
+
 export interface KnowledgeBase {
   id: string;
   companyName?: string;
@@ -244,6 +255,7 @@ export interface KnowledgeBase {
   faqs?: Array<{ question: string; answer: string }>;
   transferNumberMain?: string;
   transferNumberSupport?: string;
+  transferDestinations?: TransferDestination[];
   financialAccessEnabled?: boolean;
   financialAccessCodes?: string[];
   createdAt: string;

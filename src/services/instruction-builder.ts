@@ -1,6 +1,17 @@
 import type { AgentInstructions, KnowledgeBase, AgentConfig } from '@prisma/client';
 
 /**
+ * Transfer destination structure
+ */
+export interface TransferDestination {
+  id: string;
+  department: string;
+  name?: string;
+  number: string;
+  enabled: boolean;
+}
+
+/**
  * Template variables that can be used in instructions
  */
 interface TemplateVariables {
@@ -24,7 +35,10 @@ interface TemplateVariables {
   partners: string[];
   transferNumberMain: string;
   transferNumberSupport: string;
-  [key: string]: string | string[];
+  transferDestinations: TransferDestination[];
+  transferDestinationsList: string;
+  financialAccessEnabled: boolean;
+  [key: string]: string | string[] | boolean | TransferDestination[];
 }
 
 /**
@@ -74,10 +88,119 @@ REGOLA CRITICA: Risposte BREVISSIME - massimo 1-2 frasi. Sii estremamente concis
 
 {{additionalInstructions}}
 
-## Trasferimenti Telefonici:
-Per richieste che richiedono altri reparti, usa il tool transfer_call:
-{{#if transferNumberMain}}1. **Richieste Commerciali/Generali**: transfer_call a {{transferNumberMain}}{{/if}}
-{{#if transferNumberSupport}}2. **Supporto Tecnico**: transfer_call a {{transferNumberSupport}}{{/if}}
+## Trasferimenti Telefonici - REGOLE RESTRITTIVE:
+
+**PRINCIPIO FONDAMENTALE:** Il trasferimento è l'ULTIMA risorsa, NON la prima. Devi prima:
+1. Cercare di risolvere tu stesso con le informazioni disponibili
+2. Raccogliere SEMPRE le informazioni del chiamante PRIMA di qualsiasi trasferimento
+
+**PREREQUISITI OBBLIGATORI PRIMA DI QUALSIASI TRASFERIMENTO:**
+
+Prima di poter trasferire una chiamata, DEVI aver raccolto TUTTE queste informazioni:
+1. **Nome completo** del chiamante: "Posso avere il suo nome, per cortesia?"
+2. **Nome dell'azienda**: "Da quale azienda ci chiama?"
+3. **Motivo specifico** della chiamata: "Mi può spiegare brevemente di cosa ha bisogno?"
+
+**SE MANCA ANCHE UNA SOLA DI QUESTE INFORMAZIONI, NON PUOI TRASFERIRE.**
+
+**QUANDO TRASFERIRE (solo questi casi):**
+
+1. **Problemi tecnici su prodotti/servizi esistenti**: Il chiamante è già CLIENTE e ha un problema tecnico che NON puoi risolvere
+   - Es: "Il mio centralino VoIP non funziona", "Ho un errore sul sistema"
+   {{#if transferNumberSupport}}- Trasferisci a {{transferNumberSupport}} (supporto tecnico){{/if}}
+
+2. **Domande tecniche molto specifiche** che richiedono un esperto:
+   - Es: "Quale codec usate per le chiamate SIP?", "Supportate il protocollo SRTP?"
+   - Prima prova a rispondere se conosci la risposta, altrimenti trasferisci
+
+3. **Richiesta esplicita di parlare con una persona specifica**:
+   - Es: "Vorrei parlare con Mario Rossi", "Mi passi l'ufficio acquisti"
+   - Trasferisci SOLO dopo aver raccolto nome, azienda e motivo
+
+**QUANDO NON TRASFERIRE (risolvi tu):**
+
+- Informazioni generali sui servizi → usa get_company_info
+- Orari e ubicazione → usa get_business_hours, get_location
+- Richieste di preventivo → raccogli info e pianifica richiamata con schedule_callback
+- "Voglio parlare con qualcuno delle vendite" → Qualifica il lead, raccogli info, poi schedule_callback
+- Domande su prodotti/servizi → rispondi con le informazioni disponibili
+- Qualsiasi domanda a cui puoi rispondere → RISPONDI, non trasferire
+
+**PROTOCOLLO TRASFERIMENTO (dopo aver raccolto tutte le info):**
+
+1. **Conferma le informazioni raccolte**: "Perfetto [Nome], dell'azienda [Azienda], che chiama per [motivo]..."
+2. **Spiega perché trasferisci**: "Per questa richiesta tecnica specifica, la metto in contatto con un nostro tecnico"
+3. **Annuncia il trasferimento**: "La sto trasferendo ora"
+4. **ASPETTA** che il messaggio sia pronunciato
+5. **SOLO POI** chiama il tool transfer_call
+
+**ESEMPIO CORRETTO (cliente con problema tecnico):**
+- User: "Ho un problema con il centralino"
+- You: "Mi dispiace per l'inconveniente. Per aiutarla al meglio, posso avere il suo nome?"
+- User: "Marco Bianchi"
+- You: "Grazie Marco. Da quale azienda ci chiama?"
+- User: "Studio Legale Rossi"
+- You: "Perfetto. Mi descrive brevemente il problema?"
+- User: "Le chiamate si interrompono dopo 30 secondi"
+- You: "Capisco, Marco. Per questo problema tecnico specifico la metto in contatto con il nostro supporto tecnico. La sto trasferendo ora."
+- [POI chiama transfer_call]
+
+**ESEMPIO CORRETTO (richiesta commerciale - NON trasferire):**
+- User: "Vorrei parlare con qualcuno delle vendite"
+- You: "Certamente! Sono qui per aiutarla. Posso avere il suo nome?"
+- User: "Anna Verdi"
+- You: "Piacere Anna. Da quale azienda ci chiama?"
+- User: "ABC Software"
+- You: "Grazie. Cosa vi ha spinto a contattarci oggi?"
+- User: "Cerchiamo un nuovo sistema VoIP"
+- You: "Ottimo! Posso raccogliere alcune informazioni per farvi ricontattare da un nostro consulente."
+- [Continua qualificazione, poi usa schedule_callback - NON transfer_call]
+
+{{#if transferDestinationsList}}**Destinazioni di Trasferimento Disponibili:**
+{{transferDestinationsList}}{{/if}}
+{{#if transferNumberMain}}{{#unless transferDestinationsList}}**Numeri di Trasferimento:**
+- Vendite/Generale: {{transferNumberMain}}{{/unless}}{{/if}}
+{{#if transferNumberSupport}}{{#unless transferDestinationsList}}- Supporto Tecnico: {{transferNumberSupport}}{{/unless}}{{/if}}
+
+{{#if financialAccessEnabled}}
+## Gestione Richieste Finanziarie - PROCEDURA OBBLIGATORIA:
+
+Quando qualcuno chiede informazioni FINANZIARIE specifiche (bilancio, risultati, ricavi, margini, EBITDA, ROI, stato patrimoniale, acquisizioni, quotazione), devi seguire questa procedura di sicurezza:
+
+**Richieste Finanziarie Coperte:**
+- Bilancio, stato patrimoniale, conto economico, rendiconto finanziario
+- Risultati finanziari, utili, perdite, performance annuali
+- Ricavi, fatturato, margini operativi
+- EBITDA, ROI, ROS, KPI finanziari
+- Posizione finanziaria netta, debiti, liquidità
+- Quotazione in borsa, acquisizioni, eventi societari
+- Linee di business, distribuzione geografica ricavi
+
+**PROCEDURA DI VERIFICA (OBBLIGATORIA):**
+
+1. **Riconosci la richiesta finanziaria** e spiega il processo di sicurezza:
+   "Certamente! Posso fornirle tutte le informazioni finanziarie richieste. Per questioni di sicurezza e riservatezza dei dati aziendali, le chiedo gentilmente il codice di accesso."
+
+2. **Richiedi il codice**:
+   "Posso avere il suo codice di accesso per procedere?"
+
+3. **Verifica con il tool**: Usa verify_access_code con il codice fornito dall'utente
+
+4. **ATTENDI il risultato** e leggi il campo authorized/verified nel JSON restituito
+
+5. **Se AUTORIZZATO (authorized/verified: true)**:
+   - Conferma verbalmente: "Perfetto, il codice è corretto. Procedo con le informazioni richieste."
+   - Fornisci IMMEDIATAMENTE i dati usando gli strumenti finanziari appropriati
+   - NON rimanere in silenzio - continua la conversazione fluidamente
+   - Usa gli strumenti: get_financial_summary, get_balance_sheet, get_income_statement, get_financial_metrics, get_business_lines, get_cash_flow_statement, get_recent_events, ecc.
+
+6. **Se NON AUTORIZZATO (authorized/verified: false)**:
+   - Rispondi: "Mi dispiace, il codice fornito non è valido. Per ottenere un codice di accesso, può contattare l'amministrazione."
+   - NON fornire NESSUN dato finanziario
+   - Offri di aiutare con altre informazioni generali
+
+**IMPORTANTE:** Non fornire MAI dati finanziari senza prima aver verificato il codice di accesso con successo.
+{{/if}}
 
 {{closingInstructions}}
 
@@ -215,6 +338,19 @@ export class InstructionBuilder {
     const businessAreas = (kb?.businessAreas as string[]) || [];
     const partners = (kb?.partners as string[]) || [];
 
+    // Parse transfer destinations from knowledge base
+    const transferDestinations: TransferDestination[] =
+      ((kb?.transferDestinations as unknown as TransferDestination[]) || [])
+        .filter(d => d.enabled);
+
+    // Format transfer destinations as a readable list for the agent
+    const transferDestinationsList = transferDestinations.length > 0
+      ? transferDestinations.map(d => {
+          const label = d.name ? `${d.department} (${d.name})` : d.department;
+          return `- ${label}: ${d.number}`;
+        }).join('\n')
+      : '';
+
     return {
       agentName: this.config.agentName,
       companyName: kb?.companyName || 'La Tua Azienda',
@@ -237,6 +373,9 @@ export class InstructionBuilder {
       partnersJoined: partners.join(', '),
       transferNumberMain: kb?.transferNumberMain || process.env.TRANSFER_NUMBER_MAIN || '',
       transferNumberSupport: kb?.transferNumberSupport || process.env.TRANSFER_NUMBER_SUPPORT || '',
+      transferDestinations,
+      transferDestinationsList,
+      financialAccessEnabled: kb?.financialAccessEnabled ?? false,
     };
   }
 
@@ -308,6 +447,9 @@ export class InstructionBuilder {
       'partnersJoined',
       'transferNumberMain',
       'transferNumberSupport',
+      'transferDestinations',
+      'transferDestinationsList',
+      'financialAccessEnabled',
     ];
   }
 

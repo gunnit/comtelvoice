@@ -21,6 +21,7 @@ import {
   type AgentInstructions,
   type KnowledgeBase,
   type ToolConfig,
+  type TransferDestination,
 } from "@/lib/api";
 import {
   Settings as SettingsIcon,
@@ -34,6 +35,9 @@ import {
   Check,
   X,
   AlertCircle,
+  Phone,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 // Voice options for OpenAI Realtime
@@ -73,9 +77,10 @@ const TOOL_DEFINITIONS: Record<string, { label: string; description: string }> =
 
 export function Settings() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"agent" | "instructions" | "knowledge" | "tools">("agent");
+  const [activeTab, setActiveTab] = useState<"agent" | "instructions" | "knowledge" | "transfers" | "tools">("agent");
   const [instructionPreview, setInstructionPreview] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [transferDestinations, setTransferDestinations] = useState<TransferDestination[]>([]);
 
   // Fetch agent config
   const { data: fullConfig, isLoading, error } = useQuery({
@@ -96,6 +101,8 @@ export function Settings() {
       setInstructionsForm(fullConfig.instructions || {});
       setKnowledgeForm(fullConfig.knowledgeBase || {});
       setToolsForm(fullConfig.toolConfigs || []);
+      // Initialize transfer destinations from knowledge base
+      setTransferDestinations(fullConfig.knowledgeBase?.transferDestinations || []);
     }
   }, [fullConfig]);
 
@@ -212,6 +219,14 @@ export function Settings() {
         >
           <Building className="h-4 w-4 mr-2" />
           Knowledge Base
+        </Button>
+        <Button
+          variant={activeTab === "transfers" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveTab("transfers")}
+        >
+          <Phone className="h-4 w-4 mr-2" />
+          Trasferimenti
         </Button>
         <Button
           variant={activeTab === "tools" ? "default" : "ghost"}
@@ -754,6 +769,199 @@ export function Settings() {
                 <Save className="h-4 w-4 mr-2" />
               )}
               Salva Knowledge Base
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Transfers Tab */}
+      {activeTab === "transfers" && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Destinazioni di Trasferimento</CardTitle>
+                  <CardDescription>
+                    Configura i numeri per il trasferimento chiamate. L'agente potrà trasferire le chiamate a questi reparti.
+                  </CardDescription>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const newDestination: TransferDestination = {
+                      id: `dest-${Date.now()}`,
+                      department: "",
+                      name: "",
+                      number: "",
+                      enabled: true,
+                    };
+                    setTransferDestinations([...transferDestinations, newDestination]);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Aggiungi
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {transferDestinations.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Phone className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nessuna destinazione configurata</p>
+                  <p className="text-sm mt-2">Clicca "Aggiungi" per configurare una nuova destinazione di trasferimento</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {transferDestinations.map((dest, index) => (
+                    <div key={dest.id} className="p-4 border rounded-lg space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={dest.enabled ? "default" : "secondary"}>
+                            {dest.enabled ? "Attivo" : "Disattivo"}
+                          </Badge>
+                          {dest.department && (
+                            <span className="font-medium">{dest.department}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setTransferDestinations(
+                                transferDestinations.map((d, i) =>
+                                  i === index ? { ...d, enabled: !d.enabled } : d
+                                )
+                              );
+                            }}
+                          >
+                            {dest.enabled ? (
+                              <>
+                                <X className="h-4 w-4 mr-1" />
+                                Disattiva
+                              </>
+                            ) : (
+                              <>
+                                <Check className="h-4 w-4 mr-1" />
+                                Attiva
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => {
+                              setTransferDestinations(
+                                transferDestinations.filter((_, i) => i !== index)
+                              );
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Reparto/Dipartimento *</label>
+                          <Input
+                            value={dest.department}
+                            onChange={(e) => {
+                              setTransferDestinations(
+                                transferDestinations.map((d, i) =>
+                                  i === index ? { ...d, department: e.target.value } : d
+                                )
+                              );
+                            }}
+                            placeholder="es. Supporto Tecnico IT"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Nome Referente (opzionale)</label>
+                          <Input
+                            value={dest.name || ""}
+                            onChange={(e) => {
+                              setTransferDestinations(
+                                transferDestinations.map((d, i) =>
+                                  i === index ? { ...d, name: e.target.value } : d
+                                )
+                              );
+                            }}
+                            placeholder="es. Marco Rossi"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">Numero Telefono *</label>
+                          <Input
+                            value={dest.number}
+                            onChange={(e) => {
+                              setTransferDestinations(
+                                transferDestinations.map((d, i) =>
+                                  i === index ? { ...d, number: e.target.value } : d
+                                )
+                              );
+                            }}
+                            placeholder="+390220527877"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Legacy Transfer Numbers (kept for backward compatibility) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Numeri Legacy</CardTitle>
+              <CardDescription>
+                Numeri di trasferimento predefiniti (usati se l'agente non trova una corrispondenza nelle destinazioni sopra)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Vendite/Generale</label>
+                  <Input
+                    value={knowledgeForm.transferNumberMain || ""}
+                    onChange={(e) => setKnowledgeForm({ ...knowledgeForm, transferNumberMain: e.target.value })}
+                    placeholder="+39..."
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium">Supporto Tecnico</label>
+                  <Input
+                    value={knowledgeForm.transferNumberSupport || ""}
+                    onChange={(e) => setKnowledgeForm({ ...knowledgeForm, transferNumberSupport: e.target.value })}
+                    placeholder="+39..."
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={() => {
+                // Save both transfer destinations and knowledge base
+                updateKnowledgeMutation.mutate({
+                  ...knowledgeForm,
+                  transferDestinations,
+                });
+              }}
+              disabled={updateKnowledgeMutation.isPending}
+            >
+              {updateKnowledgeMutation.isPending ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Salva Trasferimenti
             </Button>
           </div>
         </div>
