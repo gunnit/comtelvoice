@@ -2,21 +2,36 @@ import { cn } from "@/lib/utils"
 import type { HTMLAttributes } from "react"
 
 interface BadgeProps extends HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "secondary" | "destructive" | "outline" | "success" | "warning"
+  variant?: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info"
 }
 
 export function Badge({ className, variant = "default", ...props }: BadgeProps) {
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors",
+        "inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all duration-200",
         {
-          "border-transparent bg-primary text-primary-foreground": variant === "default",
-          "border-transparent bg-secondary text-secondary-foreground": variant === "secondary",
-          "border-transparent bg-destructive text-destructive-foreground": variant === "destructive",
-          "text-foreground": variant === "outline",
-          "border-transparent bg-green-100 text-green-800": variant === "success",
-          "border-transparent bg-yellow-100 text-yellow-800": variant === "warning",
+          // Default - primary color
+          "border-transparent bg-primary/15 text-primary":
+            variant === "default",
+          // Secondary
+          "border-transparent bg-secondary text-secondary-foreground":
+            variant === "secondary",
+          // Destructive
+          "border-destructive/30 bg-destructive/15 text-destructive":
+            variant === "destructive",
+          // Outline
+          "border-border/50 text-foreground bg-transparent":
+            variant === "outline",
+          // Success
+          "border-success/30 bg-success/15 text-success":
+            variant === "success",
+          // Warning
+          "border-warning/30 bg-warning/15 text-warning":
+            variant === "warning",
+          // Info
+          "border-info/30 bg-info/15 text-info":
+            variant === "info",
         },
         className
       )}

@@ -2,6 +2,7 @@ import { motion, useInView, useScroll, useTransform } from "framer-motion"
 import { ArrowRight, Check, Phone, Shield, Server, Users, Globe, Building2, Headphones, Lock, Network, Menu, X, Play, Sparkles, Zap, Clock, ChevronRight, ChevronDown, MessageSquare, BarChart3, Settings, PhoneCall } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { Link } from "react-router-dom"
+import { Illustration } from "@/components/Illustration"
 
 // Demo Request Modal Component
 function DemoModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
@@ -92,7 +93,7 @@ function DemoModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
                                         required
                                         value={formData.name}
                                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 transition-colors"
+                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50 transition-colors"
                                         placeholder="Mario Rossi"
                                     />
                                 </div>
@@ -103,7 +104,7 @@ function DemoModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
                                         required
                                         value={formData.email}
                                         onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 transition-colors"
+                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50 transition-colors"
                                         placeholder="mario@azienda.it"
                                     />
                                 </div>
@@ -117,7 +118,7 @@ function DemoModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
                                         required
                                         value={formData.company}
                                         onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
-                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 transition-colors"
+                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50 transition-colors"
                                         placeholder="Azienda Srl"
                                     />
                                 </div>
@@ -127,7 +128,7 @@ function DemoModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
                                         type="tel"
                                         value={formData.phone}
                                         onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 transition-colors"
+                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50 transition-colors"
                                         placeholder="+39 02 1234567"
                                     />
                                 </div>
@@ -155,7 +156,7 @@ function DemoModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
                                     value={formData.message}
                                     onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
                                     rows={3}
-                                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 transition-colors resize-none"
+                                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50 transition-colors resize-none"
                                     placeholder="Raccontaci le tue esigenze..."
                                 />
                             </div>
@@ -178,7 +179,7 @@ function DemoModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
                                 )}
                             </button>
 
-                            <p className="text-xs text-slate-500 text-center">
+                            <p className="text-xs text-slate-400 text-center">
                                 Inviando questo form accetti la nostra{" "}
                                 <a href="/privacy" className="text-violet-400 hover:underline">Privacy Policy</a>
                             </p>
@@ -621,7 +622,7 @@ export function LandingPage() {
                             </motion.div>
 
                             {/* Trust indicators */}
-                            <motion.div variants={itemVariants} className="mt-12 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-slate-500">
+                            <motion.div variants={itemVariants} className="mt-12 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-slate-400">
                                 <div className="flex items-center gap-2">
                                     <Shield className="w-4 h-4 text-emerald-500" />
                                     <span>Conforme GDPR</span>
@@ -666,16 +667,117 @@ export function LandingPage() {
             </section>
 
             {/* Social Proof / Clients */}
-            <section className="py-16 border-y border-white/5">
+            <section className="py-16 border-y border-white/5 overflow-hidden">
                 <div className="container mx-auto px-6">
-                    <p className="text-center text-slate-500 text-sm mb-8">Scelto da aziende italiane per la gestione delle comunicazioni</p>
-                    <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-16 opacity-50">
-                        {/* Placeholder client logos - replace with actual logos */}
-                        {["Studio Legale", "Clinica Medica", "Concessionaria Auto", "Hotel & Hospitality", "E-commerce"].map((client, i) => (
-                            <div key={i} className="text-slate-500 font-semibold text-lg">
-                                {client}
-                            </div>
-                        ))}
+                    <p className="text-center text-slate-400 text-sm mb-8">Scelto da aziende italiane per la gestione delle comunicazioni</p>
+
+                    {/* Scrolling Marquee */}
+                    <div className="relative">
+                        {/* Gradient fade edges */}
+                        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#09090b] to-transparent z-10" />
+                        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#09090b] to-transparent z-10" />
+
+                        {/* Scrolling container */}
+                        <motion.div
+                            className="flex"
+                            animate={{ x: [0, -1600] }}
+                            transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+                        >
+                            {/* Client logos - duplicated for seamless loop */}
+                            {[...Array(2)].map((_, setIndex) => (
+                                <div key={setIndex} className="flex">
+                                    {/* Static client cards with different gradient colors */}
+                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center group-hover:from-violet-500/30 transition-colors">
+                                            <span className="text-violet-400 text-lg font-bold">S</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-medium text-sm">Studio Legale Bianchi</p>
+                                            <p className="text-slate-500 text-xs">Legal</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center group-hover:from-emerald-500/30 transition-colors">
+                                            <span className="text-emerald-400 text-lg font-bold">C</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-medium text-sm">Clinica San Marco</p>
+                                            <p className="text-slate-500 text-xs">Healthcare</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center group-hover:from-blue-500/30 transition-colors">
+                                            <span className="text-blue-400 text-lg font-bold">A</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-medium text-sm">Auto Milano</p>
+                                            <p className="text-slate-500 text-xs">Automotive</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center group-hover:from-amber-500/30 transition-colors">
+                                            <span className="text-amber-400 text-lg font-bold">H</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-medium text-sm">Hotel Duomo</p>
+                                            <p className="text-slate-500 text-xs">Hospitality</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500/20 to-pink-500/5 flex items-center justify-center group-hover:from-pink-500/30 transition-colors">
+                                            <span className="text-pink-400 text-lg font-bold">T</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-medium text-sm">TechStore Italia</p>
+                                            <p className="text-slate-500 text-xs">E-commerce</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 flex items-center justify-center group-hover:from-cyan-500/30 transition-colors">
+                                            <span className="text-cyan-400 text-lg font-bold">A</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-medium text-sm">Assicurazioni Nord</p>
+                                            <p className="text-slate-500 text-xs">Insurance</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center group-hover:from-emerald-500/30 transition-colors">
+                                            <span className="text-emerald-400 text-lg font-bold">D</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-medium text-sm">Dentista 360</p>
+                                            <p className="text-slate-500 text-xs">Healthcare</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-fuchsia-500/5 flex items-center justify-center group-hover:from-fuchsia-500/30 transition-colors">
+                                            <span className="text-fuchsia-400 text-lg font-bold">I</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-medium text-sm">Immobiliare Centro</p>
+                                            <p className="text-slate-500 text-xs">Real Estate</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </motion.div>
+                    </div>
+
+                    {/* Trust badges */}
+                    <div className="flex flex-wrap items-center justify-center gap-4 mt-10">
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span className="text-emerald-400 text-xs font-medium">ISO 27001 Compliance</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20">
+                            <div className="w-2 h-2 rounded-full bg-blue-500" />
+                            <span className="text-blue-400 text-xs font-medium">GDPR Certified</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/20">
+                            <div className="w-2 h-2 rounded-full bg-violet-500" />
+                            <span className="text-violet-400 text-xs font-medium">SOC 2 Type II</span>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -739,19 +841,22 @@ export function LandingPage() {
                                 step: "01",
                                 icon: <Settings className="w-6 h-6 text-violet-400" />,
                                 title: "Configurazione",
-                                description: "Colleghi il tuo numero telefonico esistente o ne attivi uno nuovo. Personalizzi voce, personalità e knowledge base dell'assistente."
+                                description: "Colleghi il tuo numero telefonico esistente o ne attivi uno nuovo. Personalizzi voce, personalità e knowledge base dell'assistente.",
+                                illustration: "how-it-works-1"
                             },
                             {
                                 step: "02",
                                 icon: <MessageSquare className="w-6 h-6 text-fuchsia-400" />,
                                 title: "Addestramento",
-                                description: "Carichi FAQ, procedure, contatti dei reparti. L'AI impara le specifiche del tuo business e come gestire ogni tipo di richiesta."
+                                description: "Carichi FAQ, procedure, contatti dei reparti. L'AI impara le specifiche del tuo business e come gestire ogni tipo di richiesta.",
+                                illustration: "how-it-works-2"
                             },
                             {
                                 step: "03",
                                 icon: <PhoneCall className="w-6 h-6 text-cyan-400" />,
                                 title: "Vai Live",
-                                description: "Attivi il servizio. L'assistente risponde alle chiamate, prende messaggi, trasferisce ai colleghi e ti invia report giornalieri."
+                                description: "Attivi il servizio. L'assistente risponde alle chiamate, prende messaggi, trasferisce ai colleghi e ti invia report giornalieri.",
+                                illustration: "how-it-works-3"
                             }
                         ].map((item, i) => (
                             <motion.div
@@ -767,8 +872,13 @@ export function LandingPage() {
                                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-sm font-bold">
                                         {item.step}
                                     </div>
-                                    <div className="mt-4 mb-4 w-14 h-14 mx-auto rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-                                        {item.icon}
+                                    <div className="mt-4 mb-4 flex justify-center">
+                                        <Illustration
+                                            name={item.illustration}
+                                            alt={item.title}
+                                            width={100}
+                                            className="opacity-90"
+                                        />
                                     </div>
                                     <h3 className="text-xl font-semibold text-white mb-3">{item.title}</h3>
                                     <p className="text-slate-400 leading-relaxed">{item.description}</p>
@@ -929,6 +1039,15 @@ export function LandingPage() {
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
                         >
+                            {/* Illustration above the card */}
+                            <div className="flex justify-center mb-6">
+                                <Illustration
+                                    name="enterprise-security"
+                                    alt="Sicurezza Enterprise"
+                                    width={280}
+                                    className="opacity-90"
+                                />
+                            </div>
                             <GlassCard className="p-8" hover={false}>
                                 <div className="space-y-4">
                                     {/* Security badge */}
@@ -939,7 +1058,7 @@ export function LandingPage() {
                                             </div>
                                             <div>
                                                 <p className="text-white font-medium">Sicurezza</p>
-                                                <p className="text-slate-500 text-sm">Livello Enterprise</p>
+                                                <p className="text-slate-400 text-sm">Livello Enterprise</p>
                                             </div>
                                         </div>
                                         <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-medium">
@@ -962,7 +1081,7 @@ export function LandingPage() {
                                                 transition={{ duration: 1, delay: 0.5 }}
                                             />
                                         </div>
-                                        <p className="text-slate-500 text-xs mt-2">Latenza: 12ms</p>
+                                        <p className="text-slate-400 text-xs mt-2">Latenza: 12ms</p>
                                     </div>
 
                                     {/* Data flow */}
@@ -1048,7 +1167,7 @@ export function LandingPage() {
                                         </div>
                                         <div>
                                             <p className="text-white font-medium text-sm">{testimonial.author}</p>
-                                            <p className="text-slate-500 text-xs">{testimonial.role}</p>
+                                            <p className="text-slate-400 text-xs">{testimonial.role}</p>
                                         </div>
                                     </div>
                                 </GlassCard>
@@ -1141,11 +1260,11 @@ export function LandingPage() {
                                     )}
                                     <div className="mb-6">
                                         <h3 className="text-xl font-semibold text-white mb-1">{plan.name}</h3>
-                                        <p className="text-slate-500 text-sm">{plan.description}</p>
+                                        <p className="text-slate-400 text-sm">{plan.description}</p>
                                     </div>
                                     <div className="mb-6">
                                         <span className="text-4xl font-bold text-white">{plan.price}</span>
-                                        {plan.period && <span className="text-slate-500">{plan.period}</span>}
+                                        {plan.period && <span className="text-slate-400">{plan.period}</span>}
                                     </div>
                                     <div className="flex-1 space-y-3 mb-8">
                                         {plan.features.map((feature, j) => (
@@ -1167,7 +1286,7 @@ export function LandingPage() {
                         ))}
                     </div>
 
-                    <p className="text-center text-slate-500 text-sm mt-8">
+                    <p className="text-center text-slate-400 text-sm mt-8">
                         Tutti i piani includono: configurazione iniziale gratuita, formazione, aggiornamenti automatici.
                         <br />
                         I minuti si riferiscono al tempo effettivo di conversazione AI.
@@ -1275,12 +1394,12 @@ export function LandingPage() {
                                 </div>
                                 <span className="font-bold text-white">Vocalis</span>
                             </Link>
-                            <p className="text-slate-500 text-sm mb-4 leading-relaxed">
+                            <p className="text-slate-400 text-sm mb-4 leading-relaxed">
                                 Assistente vocale AI per aziende italiane.<br />
                                 Sviluppato da Comtel Italia.
                             </p>
                             <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 text-xs text-slate-600">
+                                <div className="flex items-center gap-2 text-xs text-slate-400">
                                     <Shield className="w-3.5 h-3.5" />
                                     <span>GDPR</span>
                                 </div>
@@ -1290,7 +1409,7 @@ export function LandingPage() {
                         {/* Links */}
                         <div>
                             <h4 className="font-semibold text-white mb-4">Prodotto</h4>
-                            <ul className="space-y-3 text-slate-500 text-sm">
+                            <ul className="space-y-3 text-slate-400 text-sm">
                                 <li><a href="#come-funziona" className="hover:text-white transition-colors">Come Funziona</a></li>
                                 <li><a href="#features" className="hover:text-white transition-colors">Funzionalità</a></li>
                                 <li><a href="#pricing" className="hover:text-white transition-colors">Prezzi</a></li>
@@ -1300,7 +1419,7 @@ export function LandingPage() {
 
                         <div>
                             <h4 className="font-semibold text-white mb-4">Azienda</h4>
-                            <ul className="space-y-3 text-slate-500 text-sm">
+                            <ul className="space-y-3 text-slate-400 text-sm">
                                 <li><a href="https://www.comtelitalia.it" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Comtel Italia</a></li>
                                 <li><a href="https://www.comtelitalia.it/chi-siamo" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Chi Siamo</a></li>
                                 <li><a href="https://www.comtelitalia.it/contatti" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Contatti</a></li>
@@ -1309,7 +1428,7 @@ export function LandingPage() {
 
                         <div>
                             <h4 className="font-semibold text-white mb-4">Contatti</h4>
-                            <ul className="space-y-3 text-slate-500 text-sm">
+                            <ul className="space-y-3 text-slate-400 text-sm">
                                 <li>Via Vittor Pisani, 10</li>
                                 <li>20124 Milano, Italia</li>
                                 <li><a href="tel:+390220527810" className="text-white font-medium hover:text-violet-400 transition-colors">+39 02 2052781</a></li>
@@ -1319,10 +1438,10 @@ export function LandingPage() {
                     </div>
 
                     <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-8 border-t border-white/5">
-                        <p className="text-slate-600 text-sm">
+                        <p className="text-slate-400 text-sm">
                             © 2025 Vocalis - Comtel Italia S.r.l. Tutti i diritti riservati. P.IVA 12345678901
                         </p>
-                        <div className="flex gap-6 text-sm text-slate-500">
+                        <div className="flex gap-6 text-sm text-slate-400">
                             <a href="https://www.comtelitalia.it/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Privacy Policy</a>
                             <a href="https://www.comtelitalia.it/cookie-policy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Cookie Policy</a>
                         </div>
