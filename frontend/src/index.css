@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -117,7 +117,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
     -webkit-tap-highlight-color: transparent;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
@@ -753,4 +753,668 @@
   .badge-destructive {
     border-width: 2px;
   }
+}
+
+/* ==========================================
+   TEATRO TELEFONICO - Italian Theatre Theme
+   ========================================== */
+
+/* Teatro color variables */
+:root {
+  --teatro-rosso: #C41E3A;
+  --teatro-oro: #D4AF37;
+  --teatro-nero: #0a0a0a;
+  --teatro-crema: #FFFDD0;
+  --teatro-bordeaux: #722F37;
+  --teatro-rame: #B87333;
+}
+
+/* Teatro background - deep black with subtle noise */
+.teatro-bg {
+  background-color: var(--teatro-nero);
+  position: relative;
+}
+
+.teatro-bg::before {
+  content: '';
+  @apply absolute inset-0 pointer-events-none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+}
+
+/* Spotlight effect - radial gradient overlay */
+.spotlight {
+  position: relative;
+}
+
+.spotlight::after {
+  content: '';
+  @apply absolute inset-0 pointer-events-none;
+  background: radial-gradient(
+    ellipse 60% 80% at 50% 30%,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 70%
+  );
+}
+
+.spotlight-gold::after {
+  background: radial-gradient(
+    ellipse 60% 80% at 50% 30%,
+    rgba(212, 175, 55, 0.15) 0%,
+    transparent 70%
+  );
+}
+
+.spotlight-rosso::after {
+  background: radial-gradient(
+    ellipse 60% 80% at 50% 30%,
+    rgba(196, 30, 58, 0.12) 0%,
+    transparent 70%
+  );
+}
+
+/* Theatre curtain texture */
+.curtain-texture {
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.1) 2px,
+      rgba(0, 0, 0, 0.1) 4px
+    ),
+    linear-gradient(
+      180deg,
+      var(--teatro-bordeaux) 0%,
+      #5a2428 50%,
+      var(--teatro-bordeaux) 100%
+    );
+}
+
+/* Italian red glow effects */
+.glow-rosso {
+  box-shadow:
+    0 0 20px rgba(196, 30, 58, 0.3),
+    0 0 40px rgba(196, 30, 58, 0.2),
+    0 0 60px rgba(196, 30, 58, 0.1);
+}
+
+.glow-oro {
+  box-shadow:
+    0 0 20px rgba(212, 175, 55, 0.3),
+    0 0 40px rgba(212, 175, 55, 0.2);
+}
+
+/* Text styling for teatro */
+.text-teatro-gradient {
+  @apply bg-clip-text text-transparent;
+  background-image: linear-gradient(135deg, var(--teatro-crema), #fff);
+}
+
+.text-rosso-gradient {
+  @apply bg-clip-text text-transparent;
+  background-image: linear-gradient(135deg, var(--teatro-rosso), #ff4d6a);
+}
+
+.text-oro-gradient {
+  @apply bg-clip-text text-transparent;
+  background-image: linear-gradient(135deg, var(--teatro-oro), #f5d77a);
+}
+
+/* Massive display typography for hero - Playfair for theatrical elegance */
+.teatro-display {
+  font-family: 'Playfair Display', serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  font-style: normal;
+}
+
+.teatro-display-bold {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+
+.teatro-display-italic {
+  font-family: 'Playfair Display', serif;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+/* Script/screenplay text styling */
+.script-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  letter-spacing: 0.02em;
+}
+
+.script-header {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--teatro-oro);
+}
+
+.script-direction {
+  font-family: 'JetBrains Mono', monospace;
+  font-style: italic;
+  color: rgba(255, 253, 208, 0.6);
+}
+
+/* Audio visualizer bars container */
+.audio-visualizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 100%;
+}
+
+.audio-bar {
+  width: 4px;
+  background: linear-gradient(180deg, var(--teatro-rosso), var(--teatro-oro));
+  border-radius: 2px;
+  transform-origin: bottom;
+}
+
+/* Circular audio visualizer */
+.audio-circle {
+  position: relative;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    rgba(196, 30, 58, 0.2) 0%,
+    transparent 70%
+  );
+}
+
+.audio-circle::before {
+  content: '';
+  @apply absolute inset-0 rounded-full;
+  border: 2px solid var(--teatro-rosso);
+  opacity: 0.5;
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.audio-circle::after {
+  content: '';
+  @apply absolute rounded-full;
+  inset: 10%;
+  border: 1px solid var(--teatro-oro);
+  opacity: 0.3;
+  animation: breathe 4s ease-in-out infinite 0.5s;
+}
+
+/* Rotary dial styling */
+.rotary-dial {
+  @apply relative rounded-full;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #2a2a2a 0%,
+    #1a1a1a 50%,
+    #0a0a0a 100%
+  );
+  box-shadow:
+    inset 0 4px 8px rgba(255, 255, 255, 0.1),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.3),
+    0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.rotary-dial-hole {
+  @apply absolute rounded-full bg-black;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Vintage phone copper accents */
+.copper-accent {
+  background: linear-gradient(
+    135deg,
+    var(--teatro-rame) 0%,
+    #cd7f32 50%,
+    var(--teatro-rame) 100%
+  );
+}
+
+/* Il Filo Rosso - the connecting red thread */
+.filo-rosso {
+  stroke: var(--teatro-rosso);
+  stroke-linecap: round;
+  fill: none;
+  filter: drop-shadow(0 0 4px rgba(196, 30, 58, 0.5));
+}
+
+/* Typewriter text effect */
+.typewriter-text {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid var(--teatro-oro);
+  animation:
+    typewriter 2s steps(40) forwards,
+    blink-caret 0.75s step-end infinite;
+}
+
+@keyframes blink-caret {
+  50% { border-color: transparent; }
+}
+
+/* Sound toggle button */
+.sound-toggle {
+  @apply relative w-12 h-12 rounded-full;
+  background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+  box-shadow:
+    4px 4px 8px rgba(0, 0, 0, 0.4),
+    -2px -2px 6px rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.sound-toggle:hover {
+  box-shadow:
+    4px 4px 8px rgba(0, 0, 0, 0.4),
+    -2px -2px 6px rgba(255, 255, 255, 0.05),
+    0 0 20px rgba(196, 30, 58, 0.3);
+}
+
+.sound-toggle.active {
+  background: linear-gradient(145deg, var(--teatro-rosso), #8b1a2a);
+}
+
+/* Call duration timer */
+.call-duration {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+  color: var(--teatro-oro);
+}
+
+/* Exit intent notification */
+.chiamata-persa {
+  @apply fixed top-4 right-4 p-4 rounded-2xl;
+  background: var(--teatro-nero);
+  border: 1px solid var(--teatro-rosso);
+  box-shadow: 0 8px 32px rgba(196, 30, 58, 0.3);
+  animation: slideInFromRight 0.4s ease-out;
+}
+
+/* Teatro cards with golden border on hover */
+.teatro-card {
+  @apply relative rounded-2xl overflow-hidden;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.teatro-card:hover {
+  border-color: rgba(212, 175, 55, 0.3);
+  box-shadow: 0 8px 32px rgba(212, 175, 55, 0.1);
+}
+
+.teatro-card-featured {
+  border: 2px solid var(--teatro-oro);
+  box-shadow: 0 8px 32px rgba(212, 175, 55, 0.2);
+}
+
+/* Pricing spotlight cards */
+.pricing-spotlight {
+  @apply relative;
+}
+
+.pricing-spotlight::before {
+  content: '';
+  @apply absolute -inset-px rounded-2xl pointer-events-none;
+  background: conic-gradient(
+    from 180deg,
+    transparent 0deg,
+    var(--teatro-oro) 60deg,
+    transparent 120deg
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.pricing-spotlight:hover::before,
+.pricing-spotlight.active::before {
+  opacity: 0.5;
+}
+
+/* Transcript styling */
+.transcript-user {
+  @apply text-right;
+  color: var(--teatro-crema);
+}
+
+.transcript-agent {
+  @apply text-left;
+  color: var(--teatro-oro);
+}
+
+.transcript-typing::after {
+  content: '▋';
+  animation: blink-caret 0.75s step-end infinite;
+}
+
+/* ==========================================
+   LA PRIMA SERATA - Enhanced Theatrical Effects
+   ========================================== */
+
+/* Floating luminous orbs */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.orb-gold {
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.6) 0%, transparent 70%);
+}
+
+.orb-rose {
+  background: radial-gradient(circle, rgba(196, 30, 58, 0.5) 0%, transparent 70%);
+}
+
+.orb-cream {
+  background: radial-gradient(circle, rgba(255, 253, 208, 0.3) 0%, transparent 70%);
+}
+
+/* Hero gradient mesh background */
+.hero-gradient-mesh {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(196, 30, 58, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(212, 175, 55, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(114, 47, 55, 0.2) 0%, transparent 40%),
+    linear-gradient(180deg, rgba(10, 10, 10, 0) 0%, rgba(10, 10, 10, 1) 100%);
+}
+
+/* Dramatic spotlight from above */
+.spotlight-hero {
+  position: relative;
+}
+
+.spotlight-hero::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120%;
+  height: 80%;
+  background: radial-gradient(
+    ellipse 50% 40% at 50% 0%,
+    rgba(255, 253, 208, 0.08) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* Golden line accent */
+.gold-line {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(212, 175, 55, 0.3) 20%,
+    rgba(212, 175, 55, 0.8) 50%,
+    rgba(212, 175, 55, 0.3) 80%,
+    transparent 100%
+  );
+}
+
+/* Refined glass panel */
+.glass-teatro {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  );
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Glowing text effect */
+.text-glow-gold {
+  text-shadow:
+    0 0 20px rgba(212, 175, 55, 0.5),
+    0 0 40px rgba(212, 175, 55, 0.3),
+    0 0 60px rgba(212, 175, 55, 0.1);
+}
+
+.text-glow-rose {
+  text-shadow:
+    0 0 20px rgba(196, 30, 58, 0.5),
+    0 0 40px rgba(196, 30, 58, 0.3);
+}
+
+/* Theatrical gradient text */
+.text-teatro-gold {
+  background: linear-gradient(
+    135deg,
+    #f5d77a 0%,
+    #D4AF37 30%,
+    #c9a227 50%,
+    #D4AF37 70%,
+    #f5d77a 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-teatro-rose {
+  background: linear-gradient(
+    135deg,
+    #ff6b7a 0%,
+    #C41E3A 50%,
+    #ff6b7a 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Premium button styles */
+.btn-teatro-primary {
+  background: linear-gradient(135deg, #C41E3A 0%, #a01830 100%);
+  box-shadow:
+    0 4px 15px rgba(196, 30, 58, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-teatro-primary:hover {
+  background: linear-gradient(135deg, #d62246 0%, #C41E3A 100%);
+  box-shadow:
+    0 6px 20px rgba(196, 30, 58, 0.5),
+    0 0 40px rgba(196, 30, 58, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+  transform: translateY(-2px);
+}
+
+.btn-teatro-secondary {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-teatro-secondary:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(212, 175, 55, 0.3);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(212, 175, 55, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Enhanced teatro card with border glow */
+.teatro-card-glow {
+  position: relative;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.teatro-card-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.03) 0%,
+    transparent 50%,
+    rgba(196, 30, 58, 0.02) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.teatro-card-glow:hover {
+  border-color: rgba(212, 175, 55, 0.2);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(212, 175, 55, 0.08);
+  transform: translateY(-4px);
+}
+
+.teatro-card-glow:hover::before {
+  opacity: 1;
+}
+
+/* Animated border gradient */
+@keyframes border-flow {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.border-animated {
+  position: relative;
+}
+
+.border-animated::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 175, 55, 0.3) 25%,
+    rgba(196, 30, 58, 0.3) 50%,
+    rgba(212, 175, 55, 0.3) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: border-flow 8s linear infinite;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: -1;
+}
+
+.border-animated:hover::before {
+  opacity: 1;
+}
+
+/* Feature act number styling */
+.act-number {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  color: var(--teatro-oro);
+  opacity: 0.8;
+}
+
+/* Pricing card featured state */
+.pricing-featured {
+  background: linear-gradient(
+    135deg,
+    rgba(212, 175, 55, 0.08) 0%,
+    rgba(10, 10, 10, 0.9) 50%,
+    rgba(196, 30, 58, 0.05) 100%
+  );
+  border: 2px solid rgba(212, 175, 55, 0.4);
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.5),
+    0 0 50px rgba(212, 175, 55, 0.15),
+    inset 0 1px 0 rgba(212, 175, 55, 0.2);
+}
+
+/* Subtle scan line effect for retro feel */
+.scanlines {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Smooth scroll indicator */
+.scroll-indicator {
+  animation: float 2s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(2deg);
+  }
+}
+
+.float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+/* Badge pill styling */
+.badge-teatro {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: var(--teatro-oro);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Number counter animation */
+@keyframes count-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-count {
+  animation: count-up 0.6s ease-out forwards;
 }

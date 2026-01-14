@@ -62,6 +62,15 @@ export default {
           4: "hsl(var(--chart-4))",
           5: "hsl(var(--chart-5))",
         },
+        // Teatro Telefonico - Italian Theatre Theme
+        teatro: {
+          rosso: "#C41E3A",      // Italian red - primary accent
+          oro: "#D4AF37",         // Theatre gold - prestige
+          nero: "#0a0a0a",        // Deep black - background
+          crema: "#FFFDD0",       // Italian cream - soft highlights
+          bordeaux: "#722F37",    // Burgundy - theatre curtains
+          rame: "#B87333",        // Copper - vintage phone
+        },
         // Sidebar colors
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
@@ -82,8 +91,8 @@ export default {
         "2xl": "calc(var(--radius) + 8px)",
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['"DM Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Playfair Display"', 'Georgia', 'serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       fontSize: {
@@ -159,6 +168,44 @@ export default {
           "0%, 100%": { opacity: "1", transform: "scale(1)" },
           "50%": { opacity: "0.5", transform: "scale(1.2)" },
         },
+        // Teatro Telefonico animations
+        "curtain-left": {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-100%)" },
+        },
+        "curtain-right": {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(100%)" },
+        },
+        "spotlight-on": {
+          "0%": { opacity: "0", transform: "scale(0.8)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "typewriter": {
+          "0%": { width: "0" },
+          "100%": { width: "100%" },
+        },
+        "dial-rotate": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+        "phone-ring": {
+          "0%, 100%": { transform: "rotate(0deg)" },
+          "10%, 30%, 50%, 70%, 90%": { transform: "rotate(-10deg)" },
+          "20%, 40%, 60%, 80%": { transform: "rotate(10deg)" },
+        },
+        "audio-bar": {
+          "0%, 100%": { transform: "scaleY(0.3)" },
+          "50%": { transform: "scaleY(1)" },
+        },
+        "breathe": {
+          "0%, 100%": { transform: "scale(1)", opacity: "0.8" },
+          "50%": { transform: "scale(1.05)", opacity: "1" },
+        },
+        "red-thread-pulse": {
+          "0%, 100%": { strokeWidth: "2", opacity: "0.6" },
+          "50%": { strokeWidth: "3", opacity: "1" },
+        },
       },
       animation: {
         "fade-in": "fade-in 0.3s ease-out",
@@ -175,6 +222,16 @@ export default {
         "spin-slow": "spin-slow 20s linear infinite",
         "bounce-subtle": "bounce-subtle 2s ease-in-out infinite",
         "pulse-dot": "pulse-dot 2s ease-in-out infinite",
+        // Teatro Telefonico animation classes
+        "curtain-left": "curtain-left 1s ease-out forwards",
+        "curtain-right": "curtain-right 1s ease-out forwards",
+        "spotlight-on": "spotlight-on 0.6s ease-out forwards",
+        "typewriter": "typewriter 2s steps(40) forwards",
+        "dial-rotate": "dial-rotate 0.8s ease-in-out",
+        "phone-ring": "phone-ring 0.5s ease-in-out",
+        "audio-bar": "audio-bar 0.8s ease-in-out infinite",
+        "breathe": "breathe 4s ease-in-out infinite",
+        "red-thread-pulse": "red-thread-pulse 2s ease-in-out infinite",
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

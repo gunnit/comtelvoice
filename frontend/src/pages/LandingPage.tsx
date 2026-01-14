@@ -1,1453 +1,1086 @@
-import { motion, useInView, useScroll, useTransform } from "framer-motion"
-import { ArrowRight, Check, Phone, Shield, Server, Users, Globe, Building2, Headphones, Lock, Network, Menu, X, Play, Sparkles, Zap, Clock, ChevronRight, ChevronDown, MessageSquare, BarChart3, Settings, PhoneCall } from "lucide-react"
-import { useState, useRef, useEffect } from "react"
-import { Link } from "react-router-dom"
-import { Illustration } from "@/components/Illustration"
+import { useState, useRef, useCallback } from 'react'
+import { Link } from 'react-router-dom'
+import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion'
+import {
+  Phone, PhoneCall, PhoneOff, PhoneMissed, PhoneForwarded,
+  Calendar, MessageSquare, Shield, Zap,
+  CheckCircle2, ChevronDown, Play,
+  X, Menu, ArrowRight, Sparkles, Star
+} from 'lucide-react'
+import { AudioVisualizer } from '../components/landing/AudioVisualizer'
+import { FloatingSoundToggle } from '../components/landing/SoundToggle'
+import type { SoundLevel } from '../components/landing/SoundToggle'
+import { LiveVoiceDemo } from '../components/landing/LiveVoiceDemo'
 
-// Demo Request Modal Component
-function DemoModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        company: "",
-        phone: "",
-        employees: "",
-        message: ""
-    })
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [isSubmitted, setIsSubmitted] = useState(false)
+// ============================================
+// FLOATING ORBS - Atmospheric Background
+// ============================================
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setIsSubmitting(true)
+function FloatingOrbs() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Large gold orb - top right */}
+      <motion.div
+        className="orb orb-gold w-[600px] h-[600px] -top-48 -right-48"
+        animate={{
+          x: [0, 30, 0],
+          y: [0, -20, 0],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
+      />
 
-        // Simulate form submission - replace with actual API call
-        await new Promise(resolve => setTimeout(resolve, 1500))
+      {/* Rose orb - left side */}
+      <motion.div
+        className="orb orb-rose w-[500px] h-[500px] top-1/3 -left-64"
+        animate={{
+          x: [0, 20, 0],
+          y: [0, 30, 0],
+          scale: [1, 1.05, 1],
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+      />
 
-        setIsSubmitting(false)
-        setIsSubmitted(true)
+      {/* Cream orb - bottom center */}
+      <motion.div
+        className="orb orb-cream w-[400px] h-[400px] bottom-0 left-1/2 -translate-x-1/2"
+        animate={{
+          y: [0, -40, 0],
+          scale: [1, 1.15, 1],
+        }}
+        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
+      />
 
-        // Reset after showing success
-        setTimeout(() => {
-            setIsSubmitted(false)
-            setFormData({ name: "", email: "", company: "", phone: "", employees: "", message: "" })
-            onClose()
-        }, 3000)
-    }
-
-    if (!isOpen) return null
-
-    return (
-        <motion.div
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-        >
-            {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-                onClick={onClose}
-            />
-
-            {/* Modal */}
-            <motion.div
-                className="relative w-full max-w-lg bg-[#0f0f12] border border-white/10 rounded-3xl p-8 shadow-2xl"
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-            >
-                {/* Close button */}
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white transition-colors"
-                >
-                    <X className="w-5 h-5" />
-                </button>
-
-                {isSubmitted ? (
-                    <div className="text-center py-8">
-                        <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 flex items-center justify-center"
-                        >
-                            <Check className="w-8 h-8 text-emerald-400" />
-                        </motion.div>
-                        <h3 className="text-xl font-semibold text-white mb-2">Richiesta Inviata!</h3>
-                        <p className="text-slate-400">Ti contatteremo entro 24 ore lavorative.</p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="text-center mb-6">
-                            <h3 className="text-2xl font-bold text-white mb-2">Richiedi una Demo</h3>
-                            <p className="text-slate-400">Compila il form e ti contatteremo per una demo personalizzata.</p>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm text-slate-400 mb-1.5">Nome *</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={formData.name}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50 transition-colors"
-                                        placeholder="Mario Rossi"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-slate-400 mb-1.5">Email *</label>
-                                    <input
-                                        type="email"
-                                        required
-                                        value={formData.email}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50 transition-colors"
-                                        placeholder="mario@azienda.it"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm text-slate-400 mb-1.5">Azienda *</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={formData.company}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
-                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50 transition-colors"
-                                        placeholder="Azienda Srl"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-slate-400 mb-1.5">Telefono</label>
-                                    <input
-                                        type="tel"
-                                        value={formData.phone}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50 transition-colors"
-                                        placeholder="+39 02 1234567"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-slate-400 mb-1.5">Numero dipendenti</label>
-                                <select
-                                    value={formData.employees}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, employees: e.target.value }))}
-                                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-violet-500/50 transition-colors"
-                                >
-                                    <option value="" className="bg-slate-900">Seleziona...</option>
-                                    <option value="1-10" className="bg-slate-900">1-10</option>
-                                    <option value="11-50" className="bg-slate-900">11-50</option>
-                                    <option value="51-200" className="bg-slate-900">51-200</option>
-                                    <option value="201-500" className="bg-slate-900">201-500</option>
-                                    <option value="500+" className="bg-slate-900">500+</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-slate-400 mb-1.5">Messaggio (opzionale)</label>
-                                <textarea
-                                    value={formData.message}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                                    rows={3}
-                                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50 transition-colors resize-none"
-                                    placeholder="Raccontaci le tue esigenze..."
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="w-full py-3 bg-white text-slate-950 font-semibold rounded-xl hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isSubmitting ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                        </svg>
-                                        Invio in corso...
-                                    </span>
-                                ) : (
-                                    "Richiedi Demo Gratuita"
-                                )}
-                            </button>
-
-                            <p className="text-xs text-slate-400 text-center">
-                                Inviando questo form accetti la nostra{" "}
-                                <a href="/privacy" className="text-violet-400 hover:underline">Privacy Policy</a>
-                            </p>
-                        </form>
-                    </>
-                )}
-            </motion.div>
-        </motion.div>
-    )
+      {/* Small gold accent - mid right */}
+      <motion.div
+        className="orb orb-gold w-[200px] h-[200px] top-2/3 right-20 opacity-30"
+        animate={{
+          x: [0, -20, 0],
+          y: [0, 20, 0],
+        }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+      />
+    </div>
+  )
 }
 
-// Voice Waveform Animation Component
-function VoiceWaveform({ className = "" }: { className?: string }) {
-    const bars = 40
-    return (
-        <div className={`flex items-center justify-center gap-[3px] h-16 ${className}`}>
-            {Array.from({ length: bars }).map((_, i) => (
-                <motion.div
-                    key={i}
-                    className="w-1 bg-gradient-to-t from-violet-500 to-cyan-400 rounded-full"
-                    animate={{
-                        height: [8, Math.random() * 48 + 16, 8],
-                    }}
-                    transition={{
-                        duration: 0.8 + Math.random() * 0.4,
-                        repeat: Infinity,
-                        repeatType: "reverse",
-                        ease: "easeInOut",
-                        delay: i * 0.02,
-                    }}
-                />
-            ))}
+// ============================================
+// NAVIGATION
+// ============================================
+
+function Navigation() {
+  const [isScrolled, setIsScrolled] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  useState(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 50)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  })
+
+  return (
+    <motion.nav
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        isScrolled ? 'bg-teatro-nero/80 backdrop-blur-2xl border-b border-white/5' : ''
+      }`}
+    >
+      <div className="container mx-auto px-6 py-5">
+        <div className="flex items-center justify-between">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-teatro-rosso to-teatro-bordeaux flex items-center justify-center shadow-lg shadow-teatro-rosso/20 group-hover:shadow-teatro-rosso/40 transition-shadow">
+              <Phone className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-display font-semibold text-white tracking-tight">Vocalis</span>
+          </Link>
+
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-10">
+            <a href="#come-funziona" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
+              Come Funziona
+            </a>
+            <a href="#demo" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
+              Demo
+            </a>
+            <a href="#prezzi" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
+              Prezzi
+            </a>
+            <a href="#faq" className="text-sm text-white/60 hover:text-white transition-colors duration-300">
+              FAQ
+            </a>
+          </div>
+
+          {/* CTA Buttons */}
+          <div className="hidden md:flex items-center gap-5">
+            <Link
+              to="/login"
+              className="text-sm text-white/60 hover:text-white transition-colors duration-300"
+            >
+              Accedi
+            </Link>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="px-6 py-2.5 btn-teatro-primary text-white text-sm font-medium rounded-full"
+            >
+              Prova Gratis
+            </motion.button>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden text-white p-2 hover:bg-white/5 rounded-xl transition-colors"
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
-    )
-}
 
-// Animated Counter Component
-function AnimatedCounter({ target, suffix = "", prefix = "" }: { target: number, suffix?: string, prefix?: string }) {
-    const [count, setCount] = useState(0)
-    const ref = useRef<HTMLSpanElement>(null)
-    const isInView = useInView(ref, { once: true })
-
-    useEffect(() => {
-        if (isInView) {
-            const duration = 2000
-            const steps = 60
-            const increment = target / steps
-            let current = 0
-            const timer = setInterval(() => {
-                current += increment
-                if (current >= target) {
-                    setCount(target)
-                    clearInterval(timer)
-                } else {
-                    setCount(Math.floor(current))
-                }
-            }, duration / steps)
-            return () => clearInterval(timer)
-        }
-    }, [isInView, target])
-
-    return <span ref={ref}>{prefix}{count}{suffix}</span>
-}
-
-// Glassmorphism Card
-function GlassCard({ children, className = "", hover = true }: { children: React.ReactNode, className?: string, hover?: boolean }) {
-    return (
-        <motion.div
-            className={`relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-3xl overflow-hidden ${className}`}
-            whileHover={hover ? { scale: 1.02, borderColor: "rgba(255,255,255,0.15)" } : {}}
-            transition={{ duration: 0.3 }}
-        >
-            {/* Noise texture overlay */}
-            <div className="absolute inset-0 opacity-[0.015] bg-noise pointer-events-none" />
-            {/* Gradient glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-cyan-500/5 pointer-events-none" />
-            <div className="relative z-10">{children}</div>
-        </motion.div>
-    )
-}
-
-// Floating Phone Mockup
-function PhoneMockup() {
-    return (
-        <motion.div
-            className="relative"
-            animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-        >
-            {/* Phone frame */}
-            <div className="relative w-[280px] h-[560px] bg-slate-900 rounded-[3rem] border-4 border-slate-700 shadow-2xl shadow-violet-500/20">
-                {/* Notch */}
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-24 h-6 bg-slate-800 rounded-full" />
-
-                {/* Screen content */}
-                <div className="absolute inset-4 top-12 bg-gradient-to-b from-slate-800 to-slate-900 rounded-[2rem] overflow-hidden">
-                    {/* Call UI */}
-                    <div className="p-6 flex flex-col items-center justify-center h-full">
-                        {/* Incoming call indicator */}
-                        <motion.div
-                            className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center mb-4"
-                            animate={{ scale: [1, 1.1, 1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                        >
-                            <Phone className="w-8 h-8 text-white" />
-                        </motion.div>
-
-                        <p className="text-slate-400 text-sm mb-1">Chiamata in arrivo</p>
-                        <p className="text-white font-semibold text-lg mb-6">La Tua Azienda</p>
-
-                        {/* Waveform */}
-                        <div className="w-full mb-6">
-                            <VoiceWaveform />
-                        </div>
-
-                        {/* Transcript bubble */}
-                        <motion.div
-                            className="bg-white/10 backdrop-blur rounded-2xl px-4 py-3 max-w-full"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 1, duration: 0.5 }}
-                        >
-                            <p className="text-xs text-violet-400 mb-1">Assistente AI</p>
-                            <p className="text-sm text-slate-300 italic">"Buongiorno, come posso aiutarla?"</p>
-                        </motion.div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Decorative elements */}
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
             <motion.div
-                className="absolute -top-8 -right-8 w-32 h-32 bg-violet-500/20 rounded-full blur-3xl"
-                animate={{ opacity: [0.3, 0.6, 0.3] }}
-                transition={{ duration: 3, repeat: Infinity }}
-            />
-            <motion.div
-                className="absolute -bottom-8 -left-8 w-24 h-24 bg-cyan-500/20 rounded-full blur-3xl"
-                animate={{ opacity: [0.4, 0.7, 0.4] }}
-                transition={{ duration: 4, repeat: Infinity }}
-            />
-        </motion.div>
-    )
-}
-
-// Bento Feature Card
-function BentoCard({
-    icon,
-    title,
-    description,
-    className = "",
-    gradient = "from-violet-500/20 to-transparent"
-}: {
-    icon: React.ReactNode
-    title: string
-    description: string
-    className?: string
-    gradient?: string
-}) {
-    return (
-        <GlassCard className={`p-6 lg:p-8 group ${className}`}>
-            <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl ${gradient} rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-            <div className="mb-4 w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-white/10 transition-all duration-300">
-                {icon}
-            </div>
-            <h3 className="text-lg lg:text-xl font-semibold text-white mb-2">{title}</h3>
-            <p className="text-slate-400 text-sm lg:text-base leading-relaxed">{description}</p>
-        </GlassCard>
-    )
-}
-
-// Magnetic Button
-function MagneticButton({
-    children,
-    className = "",
-    variant = "primary",
-    onClick
-}: {
-    children: React.ReactNode,
-    className?: string,
-    variant?: "primary" | "secondary",
-    onClick?: () => void
-}) {
-    const ref = useRef<HTMLButtonElement>(null)
-    const [position, setPosition] = useState({ x: 0, y: 0 })
-
-    const handleMouse = (e: React.MouseEvent<HTMLButtonElement>) => {
-        const { clientX, clientY } = e
-        const { left, top, width, height } = ref.current!.getBoundingClientRect()
-        const x = (clientX - left - width / 2) * 0.15
-        const y = (clientY - top - height / 2) * 0.15
-        setPosition({ x, y })
-    }
-
-    const reset = () => setPosition({ x: 0, y: 0 })
-
-    const baseStyles = "relative overflow-hidden font-semibold transition-all duration-300"
-    const variants = {
-        primary: "bg-white text-slate-950 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]",
-        secondary: "bg-white/5 border border-white/10 text-white hover:bg-white/10 hover:border-white/20"
-    }
-
-    return (
-        <motion.button
-            ref={ref}
-            className={`${baseStyles} ${variants[variant]} ${className}`}
-            animate={{ x: position.x, y: position.y }}
-            onMouseMove={handleMouse}
-            onMouseLeave={reset}
-            onClick={onClick}
-            transition={{ type: "spring", stiffness: 150, damping: 15 }}
-        >
-            {children}
-        </motion.button>
-    )
-}
-
-// FAQ Accordion Item
-function FAQItem({ question, answer, isOpen, onClick }: { question: string, answer: string, isOpen: boolean, onClick: () => void }) {
-    return (
-        <motion.div
-            className="border-b border-white/10"
-            initial={false}
-        >
-            <button
-                className="w-full py-5 flex items-center justify-between text-left"
-                onClick={onClick}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden mt-4 pb-4 border-t border-white/10"
             >
-                <span className="text-white font-medium pr-8">{question}</span>
-                <motion.div
-                    animate={{ rotate: isOpen ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                >
-                    <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                </motion.div>
-            </button>
-            <motion.div
-                initial={false}
-                animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
-                transition={{ duration: 0.3 }}
-                className="overflow-hidden"
-            >
-                <p className="pb-5 text-slate-400 leading-relaxed">{answer}</p>
+              <div className="flex flex-col gap-4 pt-6">
+                <a href="#come-funziona" className="text-white/70 hover:text-white py-2">Come Funziona</a>
+                <a href="#demo" className="text-white/70 hover:text-white py-2">Demo</a>
+                <a href="#prezzi" className="text-white/70 hover:text-white py-2">Prezzi</a>
+                <a href="#faq" className="text-white/70 hover:text-white py-2">FAQ</a>
+                <div className="gold-line my-2" />
+                <Link to="/login" className="text-white/70 hover:text-white py-2">Accedi</Link>
+                <button className="px-6 py-3 btn-teatro-primary text-white text-sm font-medium rounded-full mt-2">
+                  Prova Gratis
+                </button>
+              </div>
             </motion.div>
-        </motion.div>
-    )
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.nav>
+  )
 }
+
+// ============================================
+// HERO SECTION - "La Prima Serata"
+// ============================================
+
+function HeroSection({ onPlayDemo }: { onPlayDemo: () => void }) {
+  const ref = useRef(null)
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ['start start', 'end start']
+  })
+
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
+  const y = useTransform(scrollYProgress, [0, 0.5], [0, 100])
+
+  return (
+    <section ref={ref} className="relative min-h-screen flex items-center justify-center overflow-hidden teatro-bg spotlight-hero">
+      {/* Floating orbs for atmosphere */}
+      <FloatingOrbs />
+
+      {/* Hero gradient mesh */}
+      <div className="absolute inset-0 hero-gradient-mesh" />
+
+      {/* Subtle grid pattern */}
+      <div className="absolute inset-0 opacity-[0.015]" style={{
+        backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+        backgroundSize: '80px 80px'
+      }} />
+
+      <motion.div style={{ opacity, y }} className="container mx-auto px-6 pt-32 pb-20 relative z-10">
+        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+          {/* Left: Typography */}
+          <div className="text-center lg:text-left">
+            {/* Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full glass-teatro mb-10"
+            >
+              <span className="w-2 h-2 rounded-full bg-teatro-rosso shadow-lg shadow-teatro-rosso/50 animate-pulse" />
+              <span className="text-sm text-white/80 font-medium tracking-wide">Intelligenza Artificiale Vocale</span>
+            </motion.div>
+
+            {/* Main headline */}
+            <motion.h1
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              className="mb-8"
+            >
+              <span className="block teatro-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-white/80 mb-2">
+                La voce
+              </span>
+              <span className="block teatro-display-bold text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-teatro-gold text-glow-gold">
+                della tua azienda
+              </span>
+            </motion.h1>
+
+            {/* Subheadline */}
+            <motion.p
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.7 }}
+              className="text-lg sm:text-xl text-white/50 max-w-xl mx-auto lg:mx-0 mb-12 leading-relaxed"
+            >
+              Arthur risponde alle tue chiamate{' '}
+              <span className="text-teatro-oro font-medium">24 ore su 24</span>,
+              prende messaggi, programma appuntamenti e trasferisce le chiamate importanti.
+              <span className="text-teatro-rosso font-medium"> In italiano perfetto.</span>
+            </motion.p>
+
+            {/* CTA Buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 0.6 }}
+              className="flex flex-col sm:flex-row gap-5 justify-center lg:justify-start"
+            >
+              <motion.button
+                onClick={onPlayDemo}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="group px-8 py-4 btn-teatro-primary text-white font-semibold rounded-full flex items-center justify-center gap-3"
+              >
+                <Play className="w-5 h-5" />
+                Ascolta Arthur
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-8 py-4 btn-teatro-secondary text-white font-medium rounded-full flex items-center justify-center gap-3"
+              >
+                <Calendar className="w-5 h-5" />
+                Prenota Demo
+              </motion.button>
+            </motion.div>
+
+            {/* Trust indicators */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.2, duration: 0.8 }}
+              className="flex flex-wrap items-center gap-8 mt-12 justify-center lg:justify-start"
+            >
+              {[
+                { icon: Shield, text: 'GDPR Compliant' },
+                { icon: Zap, text: 'Setup in 5 minuti' },
+                { icon: CheckCircle2, text: 'Prova gratuita' },
+              ].map((item, i) => (
+                <motion.div
+                  key={item.text}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.3 + i * 0.1 }}
+                  className="flex items-center gap-2.5 text-white/40"
+                >
+                  <item.icon className="w-4 h-4 text-teatro-oro" />
+                  <span className="text-sm">{item.text}</span>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+
+          {/* Right: Audio Visualizer */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, x: 50 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            transition={{ delay: 0.6, duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            className="flex items-center justify-center relative"
+          >
+            <AudioVisualizer size={350} isPlaying={false} />
+
+            {/* Floating elements around visualizer */}
+            <motion.div
+              animate={{ y: [0, -12, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute -top-2 -right-2 px-5 py-2.5 glass-teatro rounded-2xl"
+            >
+              <span className="text-sm text-white/80 font-medium">24/7 Attivo</span>
+            </motion.div>
+
+            <motion.div
+              animate={{ y: [0, 12, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+              className="absolute -bottom-2 -left-2 px-5 py-2.5 rounded-2xl border border-teatro-rosso/30 bg-teatro-rosso/10 backdrop-blur-sm"
+            >
+              <span className="text-sm text-teatro-crema font-medium">Italiano Nativo</span>
+            </motion.div>
+
+            <motion.div
+              animate={{ y: [0, -8, 0], x: [0, 5, 0] }}
+              transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+              className="absolute top-1/3 -right-16 hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl bg-teatro-oro/10 border border-teatro-oro/20"
+            >
+              <Star className="w-4 h-4 text-teatro-oro fill-teatro-oro" />
+              <span className="text-xs text-teatro-oro font-medium">4.9/5</span>
+            </motion.div>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Scroll indicator */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.8 }}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2"
+      >
+        <motion.div
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          className="flex flex-col items-center gap-3 text-white/30"
+        >
+          <span className="text-xs uppercase tracking-[0.2em] font-medium">Scorri</span>
+          <ChevronDown className="w-5 h-5" />
+        </motion.div>
+      </motion.div>
+    </section>
+  )
+}
+
+// ============================================
+// IL DIALOGO SECTION - Problem/Solution Split
+// ============================================
+
+function IlDialogoSection() {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-100px' })
+
+  const problems = [
+    { icon: PhoneMissed, text: 'Chiamate perse fuori orario', time: '22:47' },
+    { icon: PhoneOff, text: 'Clienti in attesa troppo a lungo', time: '14:23' },
+    { icon: MessageSquare, text: 'Messaggi non registrati', time: '09:15' },
+  ]
+
+  const solutions = [
+    { icon: PhoneCall, text: 'Risposta immediata 24/7', detail: 'Arthur risponde al primo squillo' },
+    { icon: Calendar, text: 'Appuntamenti programmati', detail: 'Sincronizzazione automatica' },
+    { icon: PhoneForwarded, text: 'Trasferimenti intelligenti', detail: 'Chiamate VIP riconosciute' },
+  ]
+
+  return (
+    <section ref={ref} className="py-32 teatro-bg relative overflow-hidden">
+      {/* Background orb */}
+      <div className="orb orb-gold w-[400px] h-[400px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-20" />
+
+      <div className="container mx-auto px-6 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-20"
+        >
+          <span className="inline-block px-4 py-1.5 badge-teatro rounded-full mb-6">Atto I</span>
+          <h2 className="teatro-display-bold text-4xl sm:text-5xl lg:text-6xl text-white mb-4">
+            Il Dialogo
+          </h2>
+          <div className="gold-line w-32 mx-auto mt-6" />
+        </motion.div>
+
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-6">
+          {/* SENZA - Problems */}
+          <motion.div
+            initial={{ opacity: 0, x: -40 }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ delay: 0.2, duration: 0.7 }}
+            className="relative"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-red-900/10 via-transparent to-transparent rounded-3xl" />
+            <div className="relative p-8 lg:p-10 rounded-3xl border border-red-500/20 bg-red-500/[0.02]">
+              <div className="flex items-center gap-4 mb-10">
+                <div className="w-3 h-3 rounded-full bg-red-500 shadow-lg shadow-red-500/50 animate-pulse" />
+                <span className="text-xl font-display font-semibold text-red-400">Senza Vocalis</span>
+              </div>
+
+              <div className="space-y-5">
+                {problems.map((problem, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={isInView ? { opacity: 1, x: 0 } : {}}
+                    transition={{ delay: 0.3 + i * 0.1, duration: 0.5 }}
+                    className="flex items-center gap-5 p-5 bg-red-500/5 rounded-2xl border border-red-500/10 hover:border-red-500/20 transition-colors"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-red-500/15 flex items-center justify-center">
+                      <problem.icon className="w-5 h-5 text-red-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white/80 font-medium">{problem.text}</p>
+                    </div>
+                    <span className="text-xs text-red-400/50 font-mono">{problem.time}</span>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Frustrated quote */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={isInView ? { opacity: 1 } : {}}
+                transition={{ delay: 0.7 }}
+                className="mt-8 p-5 bg-red-500/5 rounded-2xl border-l-2 border-red-500/30"
+              >
+                <p className="text-white/40 italic">
+                  "Ho provato a chiamare 3 volte ma nessuno risponde mai..."
+                </p>
+                <span className="text-xs text-red-400/40 mt-3 block font-medium">— Cliente perso</span>
+              </motion.div>
+            </div>
+          </motion.div>
+
+          {/* CON - Solutions */}
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ delay: 0.3, duration: 0.7 }}
+            className="relative"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-teatro-oro/10 via-transparent to-transparent rounded-3xl" />
+            <div className="relative p-8 lg:p-10 rounded-3xl border border-teatro-oro/30 spotlight-gold">
+              <div className="flex items-center gap-4 mb-10">
+                <div className="w-3 h-3 rounded-full bg-teatro-oro shadow-lg shadow-teatro-oro/50 animate-pulse" />
+                <span className="text-xl font-display font-semibold text-teatro-oro">Con Vocalis</span>
+              </div>
+
+              <div className="space-y-5">
+                {solutions.map((solution, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={isInView ? { opacity: 1, x: 0 } : {}}
+                    transition={{ delay: 0.4 + i * 0.1, duration: 0.5 }}
+                    className="flex items-center gap-5 p-5 bg-teatro-oro/5 rounded-2xl border border-teatro-oro/15 hover:border-teatro-oro/30 transition-colors"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-teatro-oro/15 flex items-center justify-center">
+                      <solution.icon className="w-5 h-5 text-teatro-oro" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-medium">{solution.text}</p>
+                      <p className="text-sm text-white/40 mt-0.5">{solution.detail}</p>
+                    </div>
+                    <CheckCircle2 className="w-5 h-5 text-teatro-oro/50" />
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Happy quote */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={isInView ? { opacity: 1 } : {}}
+                transition={{ delay: 0.8 }}
+                className="mt-8 p-5 bg-teatro-oro/5 rounded-2xl border-l-2 border-teatro-oro/50"
+              >
+                <p className="text-white/60 italic">
+                  "Arthur mi ha risposto subito e ha programmato l'appuntamento. Perfetto!"
+                </p>
+                <span className="text-xs text-teatro-oro/60 mt-3 block font-medium">— Cliente soddisfatto</span>
+              </motion.div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================
+// DEMO SECTION - "Come Parla Arthur"
+// ============================================
+
+function DemoSection() {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-100px' })
+
+  return (
+    <section id="demo" ref={ref} className="py-32 teatro-bg relative">
+      {/* Background orbs */}
+      <div className="orb orb-rose w-[300px] h-[300px] top-20 right-20 opacity-20" />
+
+      <div className="container mx-auto px-6 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-20"
+        >
+          <span className="inline-block px-4 py-1.5 badge-teatro rounded-full mb-6">Atto II</span>
+          <h2 className="teatro-display-bold text-4xl sm:text-5xl lg:text-6xl text-white mb-4">
+            La Dimostrazione
+          </h2>
+          <p className="text-white/50 max-w-2xl mx-auto text-lg mt-6">
+            Parla con Arthur dal vivo e scopri come gestisce le conversazioni in tempo reale.
+          </p>
+          <div className="gold-line w-32 mx-auto mt-8" />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.3 }}
+          className="max-w-4xl mx-auto"
+        >
+          <LiveVoiceDemo />
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================
+// FEATURES SECTION - "Le Capacità" (Script Format)
+// ============================================
+
+interface FeatureAct {
+  number: string
+  title: string
+  direction: string
+  dialogue: string
+  features: string[]
+}
+
+const featureActs: FeatureAct[] = [
+  {
+    number: 'I',
+    title: 'La Risposta',
+    direction: 'ARTHUR entra in scena. Il telefono squilla.',
+    dialogue: '"Buongiorno, [Nome Azienda]. Sono Arthur, come posso aiutarla?"',
+    features: ['Risposta in 3 secondi', 'Disponibile 24/7', 'Voce naturale italiana']
+  },
+  {
+    number: 'II',
+    title: 'La Comprensione',
+    direction: 'ARTHUR ascolta attentamente, annuendo.',
+    dialogue: '"Capisco perfettamente. Mi permetta di verificare..."',
+    features: ['Riconoscimento vocale avanzato', 'Comprensione del contesto', 'Gestione dialetti regionali']
+  },
+  {
+    number: 'III',
+    title: 'L\'Azione',
+    direction: 'ARTHUR prende nota, efficiente e preciso.',
+    dialogue: '"Ho prenotato l\'appuntamento per giovedì alle 15:00."',
+    features: ['Prenotazione appuntamenti', 'Gestione messaggi', 'Integrazione calendario']
+  },
+  {
+    number: 'IV',
+    title: 'Il Trasferimento',
+    direction: 'ARTHUR compone il numero interno con grazia.',
+    dialogue: '"La trasferisco immediatamente al reparto competente."',
+    features: ['Trasferimento intelligente', 'Riconoscimento VIP', 'Escalation automatica']
+  },
+]
+
+function FeaturesSection() {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-100px' })
+
+  return (
+    <section id="come-funziona" ref={ref} className="py-32 teatro-bg relative">
+      {/* Background elements */}
+      <div className="orb orb-cream w-[500px] h-[500px] -bottom-64 left-1/2 -translate-x-1/2 opacity-15" />
+
+      <div className="container mx-auto px-6 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-20"
+        >
+          <span className="inline-block px-4 py-1.5 badge-teatro rounded-full mb-6">Atto III</span>
+          <h2 className="teatro-display-bold text-4xl sm:text-5xl lg:text-6xl text-white mb-4">
+            Le Capacità
+          </h2>
+          <p className="text-white/50 max-w-xl mx-auto text-lg mt-6">
+            Il copione di Arthur, scena per scena
+          </p>
+          <div className="gold-line w-32 mx-auto mt-8" />
+        </motion.div>
+
+        <div className="max-w-4xl mx-auto space-y-8">
+          {featureActs.map((act, i) => (
+            <motion.div
+              key={act.number}
+              initial={{ opacity: 0, y: 40 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.2 + i * 0.15, duration: 0.6 }}
+              className="teatro-card-glow p-8 lg:p-10"
+            >
+              {/* Act header */}
+              <div className="flex items-start gap-6 mb-8">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teatro-rosso/20 to-teatro-bordeaux/20 border border-teatro-rosso/20 flex items-center justify-center flex-shrink-0">
+                  <span className="act-number text-2xl">Scena {act.number}</span>
+                </div>
+                <div>
+                  <h3 className="teatro-display-bold text-2xl lg:text-3xl text-white mb-3">{act.title}</h3>
+                  <p className="script-direction text-sm italic text-white/40">{act.direction}</p>
+                </div>
+              </div>
+
+              {/* Dialogue */}
+              <div className="pl-8 border-l-2 border-teatro-oro/30 mb-8">
+                <p className="text-lg text-teatro-crema leading-relaxed">
+                  <span className="text-teatro-oro font-semibold">ARTHUR: </span>
+                  <span className="teatro-display-italic">{act.dialogue}</span>
+                </p>
+              </div>
+
+              {/* Features as stage directions */}
+              <div className="flex flex-wrap gap-3">
+                {act.features.map((feature, j) => (
+                  <span
+                    key={j}
+                    className="px-4 py-2 bg-white/[0.03] rounded-xl text-sm text-white/60 border border-white/5"
+                  >
+                    {feature}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================
+// PRICING SECTION - "Palcoscenico"
+// ============================================
+
+interface PricingPlan {
+  name: string
+  price: string
+  period: string
+  description: string
+  features: string[]
+  highlighted?: boolean
+  cta: string
+}
+
+const pricingPlans: PricingPlan[] = [
+  {
+    name: 'Starter',
+    price: '€99',
+    period: '/mese',
+    description: 'Perfetto per iniziare',
+    features: [
+      'Fino a 100 chiamate/mese',
+      'Orario ufficio (9-18)',
+      'Presa messaggi',
+      'Email notifiche',
+      'Supporto email'
+    ],
+    cta: 'Inizia Gratis'
+  },
+  {
+    name: 'Professional',
+    price: '€249',
+    period: '/mese',
+    description: 'Per aziende in crescita',
+    features: [
+      'Chiamate illimitate',
+      'Disponibilità 24/7',
+      'Prenotazione appuntamenti',
+      'Trasferimento chiamate',
+      'Integrazione calendario',
+      'Dashboard analytics',
+      'Supporto prioritario'
+    ],
+    highlighted: true,
+    cta: 'Più Popolare'
+  },
+  {
+    name: 'Enterprise',
+    price: 'Custom',
+    period: '',
+    description: 'Soluzioni personalizzate',
+    features: [
+      'Volume personalizzato',
+      'API completa',
+      'Integrazioni custom',
+      'Training dedicato',
+      'SLA garantito',
+      'Account manager',
+      'Supporto 24/7'
+    ],
+    cta: 'Contattaci'
+  }
+]
+
+function PricingSection() {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-100px' })
+
+  return (
+    <section id="prezzi" ref={ref} className="py-32 teatro-bg relative overflow-hidden">
+      {/* Curtain effect */}
+      <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-teatro-bordeaux/15 to-transparent pointer-events-none" />
+
+      {/* Background orbs */}
+      <div className="orb orb-gold w-[400px] h-[400px] -top-32 right-0 opacity-20" />
+      <div className="orb orb-rose w-[300px] h-[300px] bottom-20 -left-32 opacity-20" />
+
+      <div className="container mx-auto px-6 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-20"
+        >
+          <span className="inline-block px-4 py-1.5 badge-teatro rounded-full mb-6">Atto IV</span>
+          <h2 className="teatro-display-bold text-4xl sm:text-5xl lg:text-6xl text-white mb-4">
+            Il Palcoscenico
+          </h2>
+          <p className="text-white/50 max-w-xl mx-auto text-lg mt-6">
+            Tutti i piani includono una prova gratuita di 14 giorni. Nessuna carta di credito richiesta.
+          </p>
+          <div className="gold-line w-32 mx-auto mt-8" />
+        </motion.div>
+
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {pricingPlans.map((plan, i) => (
+            <motion.div
+              key={plan.name}
+              initial={{ opacity: 0, y: 50 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.2 + i * 0.15, duration: 0.6 }}
+              className={`relative rounded-3xl p-8 ${
+                plan.highlighted
+                  ? 'pricing-featured'
+                  : 'teatro-card-glow'
+              }`}
+            >
+              {plan.highlighted && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-5 py-1.5 bg-teatro-oro text-teatro-nero text-sm font-semibold rounded-full shadow-lg shadow-teatro-oro/30">
+                  Più Popolare
+                </div>
+              )}
+
+              <div className="text-center mb-10">
+                <h3 className="text-xl font-display font-bold text-white mb-2">{plan.name}</h3>
+                <p className="text-white/40 text-sm mb-6">{plan.description}</p>
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className={`teatro-display-bold text-5xl ${plan.highlighted ? 'text-teatro-gold' : 'text-white'}`}>
+                    {plan.price}
+                  </span>
+                  <span className="text-white/40 text-lg">{plan.period}</span>
+                </div>
+              </div>
+
+              <ul className="space-y-4 mb-10">
+                {plan.features.map((feature, j) => (
+                  <li key={j} className="flex items-start gap-3 text-sm text-white/60">
+                    <CheckCircle2 className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                      plan.highlighted ? 'text-teatro-oro' : 'text-white/30'
+                    }`} />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`w-full py-4 rounded-2xl font-semibold transition-all duration-300 ${
+                  plan.highlighted
+                    ? 'bg-teatro-oro text-teatro-nero hover:shadow-lg hover:shadow-teatro-oro/30'
+                    : 'btn-teatro-secondary'
+                }`}
+              >
+                {plan.cta}
+              </motion.button>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================
+// FAQ SECTION - "Domande dal Pubblico"
+// ============================================
+
+const faqs = [
+  {
+    question: 'Come funziona la voce di Arthur?',
+    answer: 'Arthur utilizza la più avanzata tecnologia di sintesi vocale di OpenAI, producendo una voce naturale e fluida in italiano. Può gestire accenti regionali e adattarsi al tono della conversazione.'
+  },
+  {
+    question: 'Posso personalizzare le risposte di Arthur?',
+    answer: 'Assolutamente! Puoi configurare il saluto, le informazioni aziendali, gli orari, e le istruzioni specifiche per ogni tipo di chiamata attraverso la dashboard.'
+  },
+  {
+    question: 'Come gestisce Arthur le chiamate urgenti?',
+    answer: 'Arthur può identificare chiamate urgenti o da clienti VIP e trasferirle immediatamente al numero desiderato, oppure inviare notifiche push istantanee.'
+  },
+  {
+    question: 'È compatibile con il mio centralino esistente?',
+    answer: 'Vocalis si integra con i principali sistemi telefonici aziendali via SIP trunk. Per integrazioni specifiche, il nostro team tecnico è disponibile per assistenza.'
+  },
+  {
+    question: 'I dati delle chiamate sono sicuri?',
+    answer: 'Tutti i dati sono crittografati e archiviati in conformità con il GDPR. I server sono situati in Europa e non condividiamo mai informazioni con terze parti.'
+  },
+  {
+    question: 'Posso provare Vocalis gratuitamente?',
+    answer: 'Sì! Offriamo 14 giorni di prova gratuita con tutte le funzionalità. Non richiediamo carta di credito per iniziare.'
+  }
+]
+
+function FAQSection() {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-100px' })
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
+
+  return (
+    <section id="faq" ref={ref} className="py-32 teatro-bg">
+      <div className="container mx-auto px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7 }}
+          className="text-center mb-20"
+        >
+          <span className="inline-block px-4 py-1.5 badge-teatro rounded-full mb-6">Atto V</span>
+          <h2 className="teatro-display-bold text-4xl sm:text-5xl lg:text-6xl text-white mb-4">
+            Domande dal Pubblico
+          </h2>
+          <div className="gold-line w-32 mx-auto mt-8" />
+        </motion.div>
+
+        <div className="max-w-3xl mx-auto space-y-4">
+          {faqs.map((faq, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.1 + i * 0.05, duration: 0.5 }}
+              className="teatro-card-glow overflow-hidden"
+            >
+              <button
+                onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                className="w-full p-6 flex items-center justify-between text-left"
+              >
+                <span className="font-display font-semibold text-white pr-4">{faq.question}</span>
+                <ChevronDown
+                  className={`w-5 h-5 text-teatro-oro transition-transform duration-300 ${
+                    openIndex === i ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+              <AnimatePresence>
+                {openIndex === i && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <p className="px-6 pb-6 text-white/50 leading-relaxed">
+                      {faq.answer}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================
+// CTA SECTION - "Il Finale"
+// ============================================
+
+function CTASection() {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-100px' })
+
+  return (
+    <section ref={ref} className="py-32 teatro-bg relative overflow-hidden">
+      {/* Decorative orbs */}
+      <div className="orb orb-rose w-[400px] h-[400px] top-1/2 left-1/4 -translate-y-1/2 opacity-30" />
+      <div className="orb orb-gold w-[300px] h-[300px] top-1/2 right-1/4 -translate-y-1/2 opacity-25" />
+
+      <div className="container mx-auto px-6 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8 }}
+          className="max-w-4xl mx-auto text-center"
+        >
+          <motion.div
+            animate={{ rotate: [0, 8, -8, 0] }}
+            transition={{ duration: 3, repeat: Infinity, repeatDelay: 4, ease: 'easeInOut' }}
+            className="w-24 h-24 mx-auto mb-10 rounded-3xl bg-gradient-to-br from-teatro-rosso to-teatro-bordeaux flex items-center justify-center shadow-2xl shadow-teatro-rosso/30"
+          >
+            <Phone className="w-10 h-10 text-white" />
+          </motion.div>
+
+          <h2 className="teatro-display-bold text-4xl sm:text-5xl lg:text-6xl text-white mb-8">
+            Pronto a trasformare le tue{' '}
+            <span className="text-teatro-gold text-glow-gold">chiamate</span>?
+          </h2>
+
+          <p className="text-xl text-white/50 mb-12 max-w-2xl mx-auto leading-relaxed">
+            Inizia oggi con 14 giorni di prova gratuita. Arthur è pronto a rispondere alle tue chiamate.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-5 justify-center">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="px-10 py-5 btn-teatro-primary text-white font-semibold rounded-full flex items-center justify-center gap-3 text-lg"
+            >
+              <Sparkles className="w-5 h-5" />
+              Inizia la Prova Gratuita
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="px-10 py-5 btn-teatro-secondary text-white font-medium rounded-full flex items-center justify-center gap-3 text-lg"
+            >
+              <Phone className="w-5 h-5" />
+              Parla con Noi
+            </motion.button>
+          </div>
+
+          <p className="mt-10 text-sm text-white/30">
+            Nessuna carta di credito richiesta • Setup in 5 minuti • Supporto italiano
+          </p>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================
+// FOOTER
+// ============================================
+
+function Footer() {
+  return (
+    <footer className="py-16 teatro-bg border-t border-white/5">
+      <div className="container mx-auto px-6">
+        <div className="grid md:grid-cols-4 gap-10 mb-16">
+          {/* Brand */}
+          <div>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-teatro-rosso to-teatro-bordeaux flex items-center justify-center">
+                <Phone className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-display font-semibold text-white">Vocalis</span>
+            </div>
+            <p className="text-white/40 text-sm mb-5 leading-relaxed">
+              La voce intelligente della tua azienda.
+            </p>
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-teatro-oro" />
+              <span className="text-xs text-white/30">GDPR Compliant</span>
+            </div>
+          </div>
+
+          {/* Product */}
+          <div>
+            <h4 className="font-display font-semibold text-white mb-5">Prodotto</h4>
+            <ul className="space-y-3">
+              <li><a href="#come-funziona" className="text-sm text-white/40 hover:text-white transition-colors">Come Funziona</a></li>
+              <li><a href="#prezzi" className="text-sm text-white/40 hover:text-white transition-colors">Prezzi</a></li>
+              <li><a href="#demo" className="text-sm text-white/40 hover:text-white transition-colors">Demo</a></li>
+              <li><a href="#" className="text-sm text-white/40 hover:text-white transition-colors">API</a></li>
+            </ul>
+          </div>
+
+          {/* Company */}
+          <div>
+            <h4 className="font-display font-semibold text-white mb-5">Azienda</h4>
+            <ul className="space-y-3">
+              <li><a href="#" className="text-sm text-white/40 hover:text-white transition-colors">Chi Siamo</a></li>
+              <li><a href="#" className="text-sm text-white/40 hover:text-white transition-colors">Blog</a></li>
+              <li><a href="#" className="text-sm text-white/40 hover:text-white transition-colors">Lavora con Noi</a></li>
+              <li><a href="#" className="text-sm text-white/40 hover:text-white transition-colors">Contatti</a></li>
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="font-display font-semibold text-white mb-5">Legale</h4>
+            <ul className="space-y-3">
+              <li><a href="#" className="text-sm text-white/40 hover:text-white transition-colors">Privacy Policy</a></li>
+              <li><a href="#" className="text-sm text-white/40 hover:text-white transition-colors">Termini di Servizio</a></li>
+              <li><a href="#" className="text-sm text-white/40 hover:text-white transition-colors">Cookie Policy</a></li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="gold-line mb-8" />
+
+        {/* Bottom */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-white/30">
+            © 2024 Vocalis by Comtel Italia. Tutti i diritti riservati.
+          </p>
+          <p className="text-xs text-white/20">
+            Powered by OpenAI
+          </p>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+// ============================================
+// MAIN LANDING PAGE
+// ============================================
 
 export function LandingPage() {
-    const [isMenuOpen, setIsMenuOpen] = useState(false)
-    const [isDemoModalOpen, setIsDemoModalOpen] = useState(false)
-    const [openFAQ, setOpenFAQ] = useState<number | null>(0)
-    const heroRef = useRef<HTMLDivElement>(null)
-    const { scrollYProgress } = useScroll({
-        target: heroRef,
-        offset: ["start start", "end start"]
+  const [soundLevel, setSoundLevel] = useState<SoundLevel>('muted')
+
+  const toggleSound = useCallback(() => {
+    setSoundLevel(prev => {
+      switch (prev) {
+        case 'muted': return 'ambient'
+        case 'ambient': return 'full'
+        case 'full': return 'muted'
+      }
     })
-    const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0])
-    const heroY = useTransform(scrollYProgress, [0, 1], [0, 100])
+  }, [])
 
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1 }
-        }
-    }
+  const handlePlayDemo = useCallback(() => {
+    // Scroll to demo section
+    document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })
+  }, [])
 
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
-    }
+  return (
+    <div className="min-h-screen teatro-bg text-white">
+      <Navigation />
+      <HeroSection onPlayDemo={handlePlayDemo} />
+      <IlDialogoSection />
+      <DemoSection />
+      <FeaturesSection />
+      <PricingSection />
+      <FAQSection />
+      <CTASection />
+      <Footer />
 
-    const openDemoModal = () => setIsDemoModalOpen(true)
-
-    const faqs = [
-        {
-            question: "Come funziona l'integrazione con il mio centralino esistente?",
-            answer: "Vocalis supporta l'integrazione BYOC (Bring Your Own Carrier), permettendoti di mantenere i tuoi numeri telefonici e il tuo operatore. L'integrazione avviene tramite SIP trunk e richiede modifiche minime alla tua infrastruttura esistente. Il nostro team ti guiderà nell'intero processo."
-        },
-        {
-            question: "I dati delle conversazioni dove vengono archiviati?",
-            answer: "Con il piano Enterprise, i dati restano completamente sui tuoi server (on-premise). Per i piani Business e Professional, i dati sono archiviati in data center italiani certificati, in piena conformità GDPR. Non condividiamo mai i dati con terze parti."
-        },
-        {
-            question: "Quanto tempo richiede l'attivazione?",
-            answer: "Per i piani Business e Professional, l'attivazione tipica richiede 48-72 ore dalla firma del contratto. Per soluzioni Enterprise on-premise, il tempo varia in base alla complessità dell'infrastruttura (solitamente 2-4 settimane)."
-        },
-        {
-            question: "L'assistente AI può gestire conversazioni complesse?",
-            answer: "Sì. Il nostro AI è basato sui modelli più avanzati di OpenAI ed è ottimizzato per conversazioni naturali in italiano. Può gestire FAQ, prendere messaggi, schedulare callback, trasferire chiamate e persino accedere a dati aziendali (con autenticazione). Puoi personalizzare completamente la knowledge base e le istruzioni."
-        },
-        {
-            question: "Cosa succede se l'AI non riesce a rispondere?",
-            answer: "L'assistente è configurato per riconoscere i propri limiti. Quando non è in grado di rispondere adeguatamente, trasferisce automaticamente la chiamata a un operatore umano o prende un messaggio dettagliato. Puoi configurare le regole di escalation nel pannello di controllo."
-        },
-        {
-            question: "Posso provare il servizio prima di acquistare?",
-            answer: "Certamente! Offriamo una demo gratuita personalizzata dove potrai vedere il sistema in azione con scenari reali del tuo business. Durante la demo, configureremo insieme le prime impostazioni e potrai testare una chiamata dal vivo."
-        }
-    ]
-
-    return (
-        <div className="min-h-screen bg-[#09090b] text-slate-50 font-sans selection:bg-violet-500/30 overflow-x-hidden">
-            {/* Demo Modal */}
-            <DemoModal isOpen={isDemoModalOpen} onClose={() => setIsDemoModalOpen(false)} />
-
-            {/* Animated Background */}
-            <div className="fixed inset-0 -z-10">
-                <div className="absolute top-0 left-1/4 w-[800px] h-[600px] bg-violet-500/10 rounded-full blur-[150px] animate-pulse-glow" />
-                <div className="absolute bottom-0 right-1/4 w-[600px] h-[500px] bg-cyan-500/10 rounded-full blur-[150px] animate-pulse-glow" style={{ animationDelay: "1s" }} />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-gradient-radial from-violet-500/5 via-transparent to-transparent" />
-                {/* Grid pattern */}
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:72px_72px]" />
-            </div>
-
-            {/* Navigation */}
-            <nav className="fixed top-0 w-full z-50 border-b border-white/5">
-                <div className="absolute inset-0 bg-[#09090b]/80 backdrop-blur-xl" />
-                <div className="relative container mx-auto px-6 h-20 flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-3 group">
-                        <div className="relative">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center">
-                                <Phone className="w-5 h-5 text-white" />
-                            </div>
-                            <div className="absolute inset-0 bg-violet-500/50 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                        <span className="text-xl font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
-                            Vocalis
-                        </span>
-                    </Link>
-
-                    {/* Desktop Nav */}
-                    <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
-                        <a href="#come-funziona" className="hover:text-white transition-colors relative group">
-                            Come Funziona
-                            <span className="absolute -bottom-1 left-0 w-0 h-px bg-gradient-to-r from-violet-500 to-cyan-500 group-hover:w-full transition-all duration-300" />
-                        </a>
-                        <a href="#features" className="hover:text-white transition-colors relative group">
-                            Funzionalità
-                            <span className="absolute -bottom-1 left-0 w-0 h-px bg-gradient-to-r from-violet-500 to-cyan-500 group-hover:w-full transition-all duration-300" />
-                        </a>
-                        <a href="#pricing" className="hover:text-white transition-colors relative group">
-                            Prezzi
-                            <span className="absolute -bottom-1 left-0 w-0 h-px bg-gradient-to-r from-violet-500 to-cyan-500 group-hover:w-full transition-all duration-300" />
-                        </a>
-                        <a href="#faq" className="hover:text-white transition-colors relative group">
-                            FAQ
-                            <span className="absolute -bottom-1 left-0 w-0 h-px bg-gradient-to-r from-violet-500 to-cyan-500 group-hover:w-full transition-all duration-300" />
-                        </a>
-                        <Link to="/login" className="hover:text-white transition-colors relative group">
-                            Accedi
-                            <span className="absolute -bottom-1 left-0 w-0 h-px bg-gradient-to-r from-violet-500 to-cyan-500 group-hover:w-full transition-all duration-300" />
-                        </Link>
-                        <MagneticButton className="px-5 py-2.5 rounded-full text-sm" variant="primary" onClick={openDemoModal}>
-                            <span className="relative z-10 flex items-center gap-2">
-                                Richiedi Demo <Sparkles className="w-4 h-4" />
-                            </span>
-                        </MagneticButton>
-                    </div>
-
-                    {/* Mobile Menu Toggle */}
-                    <button className="md:hidden p-2 text-slate-300" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-                        {isMenuOpen ? <X /> : <Menu />}
-                    </button>
-                </div>
-
-                {/* Mobile Nav */}
-                {isMenuOpen && (
-                    <motion.div
-                        className="md:hidden border-t border-white/5 bg-[#09090b]/95 backdrop-blur-xl p-6 flex flex-col gap-4"
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                    >
-                        <a href="#come-funziona" className="text-slate-300 hover:text-white py-2" onClick={() => setIsMenuOpen(false)}>Come Funziona</a>
-                        <a href="#features" className="text-slate-300 hover:text-white py-2" onClick={() => setIsMenuOpen(false)}>Funzionalità</a>
-                        <a href="#pricing" className="text-slate-300 hover:text-white py-2" onClick={() => setIsMenuOpen(false)}>Prezzi</a>
-                        <a href="#faq" className="text-slate-300 hover:text-white py-2" onClick={() => setIsMenuOpen(false)}>FAQ</a>
-                        <Link to="/login" className="text-slate-300 hover:text-white py-2" onClick={() => setIsMenuOpen(false)}>Accedi</Link>
-                        <button
-                            className="bg-white text-slate-950 px-5 py-3 rounded-xl font-semibold w-full mt-2"
-                            onClick={() => { setIsMenuOpen(false); openDemoModal(); }}
-                        >
-                            Richiedi Demo
-                        </button>
-                    </motion.div>
-                )}
-            </nav>
-
-            {/* Hero Section */}
-            <section ref={heroRef} className="relative min-h-screen flex items-center pt-20">
-                <motion.div
-                    className="container mx-auto px-6 py-20 lg:py-32"
-                    style={{ opacity: heroOpacity, y: heroY }}
-                >
-                    <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-                        {/* Left: Content */}
-                        <motion.div
-                            variants={containerVariants}
-                            initial="hidden"
-                            animate="visible"
-                            className="text-center lg:text-left"
-                        >
-                            {/* Badge */}
-                            <motion.div variants={itemVariants} className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2 mb-8">
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                </span>
-                                <span className="text-sm text-slate-300">Receptionist AI di Nuova Generazione</span>
-                            </motion.div>
-
-                            {/* Headline */}
-                            <motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight mb-6 leading-[1.1]">
-                                <span className="text-white">Il Tuo Centralino</span>
-                                <br />
-                                <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient-x">
-                                    Diventa Intelligente
-                                </span>
-                            </motion.h1>
-
-                            {/* Subheadline */}
-                            <motion.p variants={itemVariants} className="text-lg lg:text-xl text-slate-400 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                                Assistente vocale AI che risponde alle chiamate 24/7, prende messaggi,
-                                gestisce appuntamenti e trasferisce ai giusti reparti.
-                                <span className="text-white font-medium"> Tutto in italiano.</span>
-                            </motion.p>
-
-                            {/* CTAs */}
-                            <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
-                                <MagneticButton className="w-full sm:w-auto px-8 py-4 rounded-2xl text-base" variant="primary" onClick={openDemoModal}>
-                                    <span className="relative z-10 flex items-center justify-center gap-2">
-                                        Richiedi Demo Gratuita <ArrowRight className="w-5 h-5" />
-                                    </span>
-                                </MagneticButton>
-                                <MagneticButton className="w-full sm:w-auto px-8 py-4 rounded-2xl text-base" variant="secondary" onClick={() => document.getElementById('come-funziona')?.scrollIntoView({ behavior: 'smooth' })}>
-                                    <span className="flex items-center justify-center gap-2">
-                                        <Play className="w-5 h-5" /> Scopri Come Funziona
-                                    </span>
-                                </MagneticButton>
-                            </motion.div>
-
-                            {/* Trust indicators */}
-                            <motion.div variants={itemVariants} className="mt-12 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-sm text-slate-400">
-                                <div className="flex items-center gap-2">
-                                    <Shield className="w-4 h-4 text-emerald-500" />
-                                    <span>Conforme GDPR</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Server className="w-4 h-4 text-violet-500" />
-                                    <span>Dati in Italia</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Globe className="w-4 h-4 text-cyan-500" />
-                                    <span>Numeri +39</span>
-                                </div>
-                            </motion.div>
-                        </motion.div>
-
-                        {/* Right: Phone Mockup */}
-                        <motion.div
-                            className="hidden lg:flex justify-center"
-                            initial={{ opacity: 0, x: 50 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.8, delay: 0.3 }}
-                        >
-                            <PhoneMockup />
-                        </motion.div>
-                    </div>
-                </motion.div>
-
-                {/* Scroll indicator */}
-                <motion.div
-                    className="absolute bottom-8 left-1/2 -translate-x-1/2"
-                    animate={{ y: [0, 10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                >
-                    <div className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2">
-                        <motion.div
-                            className="w-1.5 h-1.5 rounded-full bg-white/50"
-                            animate={{ y: [0, 12, 0] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                        />
-                    </div>
-                </motion.div>
-            </section>
-
-            {/* Social Proof / Clients */}
-            <section className="py-16 border-y border-white/5 overflow-hidden">
-                <div className="container mx-auto px-6">
-                    <p className="text-center text-slate-400 text-sm mb-8">Scelto da aziende italiane per la gestione delle comunicazioni</p>
-
-                    {/* Scrolling Marquee */}
-                    <div className="relative">
-                        {/* Gradient fade edges */}
-                        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#09090b] to-transparent z-10" />
-                        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#09090b] to-transparent z-10" />
-
-                        {/* Scrolling container */}
-                        <motion.div
-                            className="flex"
-                            animate={{ x: [0, -1600] }}
-                            transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-                        >
-                            {/* Client logos - duplicated for seamless loop */}
-                            {[...Array(2)].map((_, setIndex) => (
-                                <div key={setIndex} className="flex">
-                                    {/* Static client cards with different gradient colors */}
-                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
-                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/5 flex items-center justify-center group-hover:from-violet-500/30 transition-colors">
-                                            <span className="text-violet-400 text-lg font-bold">S</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-white font-medium text-sm">Studio Legale Bianchi</p>
-                                            <p className="text-slate-500 text-xs">Legal</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
-                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center group-hover:from-emerald-500/30 transition-colors">
-                                            <span className="text-emerald-400 text-lg font-bold">C</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-white font-medium text-sm">Clinica San Marco</p>
-                                            <p className="text-slate-500 text-xs">Healthcare</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
-                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center group-hover:from-blue-500/30 transition-colors">
-                                            <span className="text-blue-400 text-lg font-bold">A</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-white font-medium text-sm">Auto Milano</p>
-                                            <p className="text-slate-500 text-xs">Automotive</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
-                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center group-hover:from-amber-500/30 transition-colors">
-                                            <span className="text-amber-400 text-lg font-bold">H</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-white font-medium text-sm">Hotel Duomo</p>
-                                            <p className="text-slate-500 text-xs">Hospitality</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
-                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500/20 to-pink-500/5 flex items-center justify-center group-hover:from-pink-500/30 transition-colors">
-                                            <span className="text-pink-400 text-lg font-bold">T</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-white font-medium text-sm">TechStore Italia</p>
-                                            <p className="text-slate-500 text-xs">E-commerce</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
-                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 flex items-center justify-center group-hover:from-cyan-500/30 transition-colors">
-                                            <span className="text-cyan-400 text-lg font-bold">A</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-white font-medium text-sm">Assicurazioni Nord</p>
-                                            <p className="text-slate-500 text-xs">Insurance</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
-                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center group-hover:from-emerald-500/30 transition-colors">
-                                            <span className="text-emerald-400 text-lg font-bold">D</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-white font-medium text-sm">Dentista 360</p>
-                                            <p className="text-slate-500 text-xs">Healthcare</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 px-6 py-4 mx-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default whitespace-nowrap">
-                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-fuchsia-500/5 flex items-center justify-center group-hover:from-fuchsia-500/30 transition-colors">
-                                            <span className="text-fuchsia-400 text-lg font-bold">I</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-white font-medium text-sm">Immobiliare Centro</p>
-                                            <p className="text-slate-500 text-xs">Real Estate</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </motion.div>
-                    </div>
-
-                    {/* Trust badges */}
-                    <div className="flex flex-wrap items-center justify-center gap-4 mt-10">
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span className="text-emerald-400 text-xs font-medium">ISO 27001 Compliance</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20">
-                            <div className="w-2 h-2 rounded-full bg-blue-500" />
-                            <span className="text-blue-400 text-xs font-medium">GDPR Certified</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/20">
-                            <div className="w-2 h-2 rounded-full bg-violet-500" />
-                            <span className="text-violet-400 text-xs font-medium">SOC 2 Type II</span>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Stats Section */}
-            <section className="py-20 relative">
-                <div className="container mx-auto px-6">
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                        {[
-                            { value: 99, suffix: "%", label: "Uptime Garantito", icon: Server },
-                            { value: 24, suffix: "/7", label: "Sempre Attivo", icon: Clock },
-                            { value: 100, suffix: "+", label: "Interni Gestibili", icon: Network },
-                            { value: 3, suffix: "sec", label: "Tempo di Risposta", icon: Zap }
-                        ].map((stat, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.1 }}
-                            >
-                                <GlassCard className="p-6 text-center" hover={false}>
-                                    <stat.icon className="w-6 h-6 mx-auto mb-3 text-violet-400" />
-                                    <div className="text-3xl lg:text-4xl font-bold text-white mb-1">
-                                        <AnimatedCounter target={stat.value} suffix={stat.suffix} />
-                                    </div>
-                                    <p className="text-slate-400 text-sm">{stat.label}</p>
-                                </GlassCard>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* How it Works Section */}
-            <section id="come-funziona" className="py-24 relative">
-                <div className="container mx-auto px-6">
-                    <motion.div
-                        className="text-center max-w-2xl mx-auto mb-16"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                    >
-                        <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium mb-6">
-                            Come Funziona
-                        </span>
-                        <h2 className="text-3xl lg:text-5xl font-bold text-white mb-4">
-                            Attivo in <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">3 Semplici Passi</span>
-                        </h2>
-                        <p className="text-slate-400 text-lg">
-                            Dall'integrazione al go-live in meno di una settimana
-                        </p>
-                    </motion.div>
-
-                    <div className="grid md:grid-cols-3 gap-8 relative">
-                        {/* Connection line */}
-                        <div className="hidden md:block absolute top-24 left-1/6 right-1/6 h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
-
-                        {[
-                            {
-                                step: "01",
-                                icon: <Settings className="w-6 h-6 text-violet-400" />,
-                                title: "Configurazione",
-                                description: "Colleghi il tuo numero telefonico esistente o ne attivi uno nuovo. Personalizzi voce, personalità e knowledge base dell'assistente.",
-                                illustration: "how-it-works-1"
-                            },
-                            {
-                                step: "02",
-                                icon: <MessageSquare className="w-6 h-6 text-fuchsia-400" />,
-                                title: "Addestramento",
-                                description: "Carichi FAQ, procedure, contatti dei reparti. L'AI impara le specifiche del tuo business e come gestire ogni tipo di richiesta.",
-                                illustration: "how-it-works-2"
-                            },
-                            {
-                                step: "03",
-                                icon: <PhoneCall className="w-6 h-6 text-cyan-400" />,
-                                title: "Vai Live",
-                                description: "Attivi il servizio. L'assistente risponde alle chiamate, prende messaggi, trasferisce ai colleghi e ti invia report giornalieri.",
-                                illustration: "how-it-works-3"
-                            }
-                        ].map((item, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.2 }}
-                                className="relative"
-                            >
-                                <GlassCard className="p-8 h-full text-center">
-                                    {/* Step number */}
-                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-sm font-bold">
-                                        {item.step}
-                                    </div>
-                                    <div className="mt-4 mb-4 flex justify-center">
-                                        <Illustration
-                                            name={item.illustration}
-                                            alt={item.title}
-                                            width={100}
-                                            className="opacity-90"
-                                        />
-                                    </div>
-                                    <h3 className="text-xl font-semibold text-white mb-3">{item.title}</h3>
-                                    <p className="text-slate-400 leading-relaxed">{item.description}</p>
-                                </GlassCard>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Bento Features Grid */}
-            <section id="features" className="py-24 relative">
-                <div className="container mx-auto px-6">
-                    <motion.div
-                        className="text-center max-w-2xl mx-auto mb-16"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                    >
-                        <span className="inline-block px-4 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm font-medium mb-6">
-                            Funzionalità
-                        </span>
-                        <h2 className="text-3xl lg:text-5xl font-bold text-white mb-4">
-                            Tutto ciò che serve per{" "}
-                            <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">gestire le chiamate</span>
-                        </h2>
-                        <p className="text-slate-400 text-lg">
-                            Tecnologia avanzata, semplicità d'uso
-                        </p>
-                    </motion.div>
-
-                    {/* Bento Grid */}
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-                        {/* Large card */}
-                        <motion.div
-                            className="md:col-span-2 lg:col-span-2"
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                        >
-                            <GlassCard className="p-8 h-full">
-                                <div className="flex flex-col lg:flex-row gap-8 items-center">
-                                    <div className="flex-1">
-                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center mb-4">
-                                            <Headphones className="w-6 h-6 text-white" />
-                                        </div>
-                                        <h3 className="text-2xl font-bold text-white mb-3">Conversazioni Naturali in Italiano</h3>
-                                        <p className="text-slate-400 leading-relaxed mb-4">
-                                            L'assistente AI risponde con voce naturale, comprende il contesto
-                                            e gestisce conversazioni complesse. Riconosce automaticamente
-                                            la lingua del chiamante e si adatta di conseguenza.
-                                        </p>
-                                        <button
-                                            onClick={openDemoModal}
-                                            className="inline-flex items-center gap-2 text-violet-400 hover:text-violet-300 font-medium text-sm"
-                                        >
-                                            Ascolta una demo <ChevronRight className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    <div className="flex-shrink-0 w-full lg:w-auto">
-                                        <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/5">
-                                            <VoiceWaveform className="w-full lg:w-48" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </GlassCard>
-                        </motion.div>
-
-                        <BentoCard
-                            icon={<Users className="w-6 h-6 text-blue-400" />}
-                            title="Receptionist 24/7"
-                            description="Non perdi mai una chiamata. Risponde a qualsiasi ora, gestisce FAQ, prende messaggi dettagliati."
-                            gradient="from-blue-500/20"
-                        />
-
-                        <BentoCard
-                            icon={<Network className="w-6 h-6 text-pink-400" />}
-                            title="Trasferimento Intelligente"
-                            description="Instrada le chiamate ai giusti reparti o colleghi. Gestisce code di attesa e failover automatici."
-                            gradient="from-pink-500/20"
-                        />
-
-                        <BentoCard
-                            icon={<Building2 className="w-6 h-6 text-amber-400" />}
-                            title="Completamente Personalizzabile"
-                            description="Voce, tono, knowledge base: configura l'assistente per rappresentare al meglio la tua azienda."
-                            gradient="from-amber-500/20"
-                        />
-
-                        <BentoCard
-                            icon={<BarChart3 className="w-6 h-6 text-emerald-400" />}
-                            title="Analytics e Report"
-                            description="Dashboard con metriche chiamate, trascrizioni complete e insight per migliorare il servizio."
-                            gradient="from-emerald-500/20"
-                        />
-                    </div>
-                </div>
-            </section>
-
-            {/* Enterprise Section */}
-            <section id="enterprise" className="py-24 relative">
-                <div className="container mx-auto px-6">
-                    <div className="grid lg:grid-cols-2 gap-16 items-center">
-                        {/* Left: Content */}
-                        <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                        >
-                            <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium mb-6">
-                                Enterprise
-                            </span>
-                            <h2 className="text-3xl lg:text-5xl font-bold text-white mb-6 leading-tight">
-                                Controllo Totale.<br />
-                                <span className="text-slate-400">Sicurezza Assoluta.</span>
-                            </h2>
-                            <p className="text-slate-400 text-lg mb-8 leading-relaxed">
-                                Per aziende che richiedono il massimo livello di controllo e sicurezza.
-                                I tuoi dati restano tuoi, sempre.
-                            </p>
-
-                            <div className="space-y-4">
-                                {[
-                                    { icon: Server, text: "Installazione sui tuoi server (on-premise)" },
-                                    { icon: Lock, text: "Crittografia end-to-end, audit completi" },
-                                    { icon: Shield, text: "Conforme GDPR e normative italiane" },
-                                    { icon: Phone, text: "BYOC: mantieni i tuoi numeri esistenti" }
-                                ].map((item, i) => (
-                                    <motion.div
-                                        key={i}
-                                        className="flex items-center gap-4"
-                                        initial={{ opacity: 0, x: -20 }}
-                                        whileInView={{ opacity: 1, x: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ delay: i * 0.1 }}
-                                    >
-                                        <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-                                            <item.icon className="w-5 h-5 text-emerald-400" />
-                                        </div>
-                                        <span className="text-slate-300">{item.text}</span>
-                                    </motion.div>
-                                ))}
-                            </div>
-
-                            <div className="mt-10">
-                                <MagneticButton className="px-8 py-4 rounded-2xl text-base" variant="primary" onClick={openDemoModal}>
-                                    <span className="flex items-center gap-2">
-                                        Parla con un Esperto <ArrowRight className="w-5 h-5" />
-                                    </span>
-                                </MagneticButton>
-                            </div>
-                        </motion.div>
-
-                        {/* Right: Visual */}
-                        <motion.div
-                            className="relative"
-                            initial={{ opacity: 0, x: 20 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                        >
-                            {/* Illustration above the card */}
-                            <div className="flex justify-center mb-6">
-                                <Illustration
-                                    name="enterprise-security"
-                                    alt="Sicurezza Enterprise"
-                                    width={280}
-                                    className="opacity-90"
-                                />
-                            </div>
-                            <GlassCard className="p-8" hover={false}>
-                                <div className="space-y-4">
-                                    {/* Security badge */}
-                                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                                                <Shield className="w-5 h-5 text-emerald-400" />
-                                            </div>
-                                            <div>
-                                                <p className="text-white font-medium">Sicurezza</p>
-                                                <p className="text-slate-400 text-sm">Livello Enterprise</p>
-                                            </div>
-                                        </div>
-                                        <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-medium">
-                                            Attivo
-                                        </span>
-                                    </div>
-
-                                    {/* Server status */}
-                                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-slate-400 text-sm">Data Center</span>
-                                            <span className="text-emerald-400 text-sm">Milano, Italia</span>
-                                        </div>
-                                        <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                                            <motion.div
-                                                className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full"
-                                                initial={{ width: 0 }}
-                                                whileInView={{ width: "100%" }}
-                                                viewport={{ once: true }}
-                                                transition={{ duration: 1, delay: 0.5 }}
-                                            />
-                                        </div>
-                                        <p className="text-slate-400 text-xs mt-2">Latenza: 12ms</p>
-                                    </div>
-
-                                    {/* Data flow */}
-                                    <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                                        <p className="text-slate-400 text-sm mb-3">Flusso Dati</p>
-                                        <div className="flex items-center gap-3">
-                                            <div className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 text-sm">Chiamata</div>
-                                            <ChevronRight className="w-4 h-4 text-slate-600" />
-                                            <div className="px-3 py-2 rounded-lg bg-violet-500/20 text-violet-300 text-sm border border-violet-500/30">AI</div>
-                                            <ChevronRight className="w-4 h-4 text-slate-600" />
-                                            <div className="px-3 py-2 rounded-lg bg-emerald-500/20 text-emerald-300 text-sm border border-emerald-500/30">Server IT</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </GlassCard>
-
-                            {/* Decorative glow */}
-                            <div className="absolute -inset-4 bg-gradient-to-r from-violet-500/10 to-emerald-500/10 rounded-3xl blur-3xl -z-10" />
-                        </motion.div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Testimonials Section */}
-            <section className="py-24 relative">
-                <div className="container mx-auto px-6">
-                    <motion.div
-                        className="text-center max-w-2xl mx-auto mb-16"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                    >
-                        <span className="inline-block px-4 py-1.5 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-400 text-sm font-medium mb-6">
-                            Testimonianze
-                        </span>
-                        <h2 className="text-3xl lg:text-5xl font-bold text-white mb-4">
-                            Cosa Dicono i <span className="bg-gradient-to-r from-fuchsia-400 to-violet-400 bg-clip-text text-transparent">Nostri Clienti</span>
-                        </h2>
-                    </motion.div>
-
-                    <div className="grid md:grid-cols-3 gap-6">
-                        {[
-                            {
-                                quote: "Da quando abbiamo attivato Vocalis, non perdiamo più nessuna chiamata fuori orario. L'assistente gestisce le urgenze e ci invia report dettagliati ogni mattina.",
-                                author: "Marco B.",
-                                role: "Titolare, Studio Legale",
-                                avatar: "MB"
-                            },
-                            {
-                                quote: "I pazienti apprezzano la possibilità di prenotare appuntamenti a qualsiasi ora. Il sistema si integra perfettamente con la nostra agenda e riduce il carico sulla segreteria.",
-                                author: "Dr.ssa Laura T.",
-                                role: "Direttrice, Clinica Medica",
-                                avatar: "LT"
-                            },
-                            {
-                                quote: "L'installazione on-premise era fondamentale per noi. I dati dei clienti non escono mai dalla nostra infrastruttura e rispettiamo tutti i requisiti di compliance.",
-                                author: "Giuseppe R.",
-                                role: "IT Manager, Azienda Manifatturiera",
-                                avatar: "GR"
-                            }
-                        ].map((testimonial, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.1 }}
-                            >
-                                <GlassCard className="p-6 h-full flex flex-col">
-                                    <div className="flex-1">
-                                        <div className="flex gap-1 mb-4">
-                                            {[...Array(5)].map((_, j) => (
-                                                <svg key={j} className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                                </svg>
-                                            ))}
-                                        </div>
-                                        <p className="text-slate-300 leading-relaxed mb-6">"{testimonial.quote}"</p>
-                                    </div>
-                                    <div className="flex items-center gap-3 pt-4 border-t border-white/10">
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-sm font-semibold">
-                                            {testimonial.avatar}
-                                        </div>
-                                        <div>
-                                            <p className="text-white font-medium text-sm">{testimonial.author}</p>
-                                            <p className="text-slate-400 text-xs">{testimonial.role}</p>
-                                        </div>
-                                    </div>
-                                </GlassCard>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Pricing Section */}
-            <section id="pricing" className="py-24 relative">
-                <div className="container mx-auto px-6">
-                    <motion.div
-                        className="text-center max-w-2xl mx-auto mb-16"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                    >
-                        <span className="inline-block px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-sm font-medium mb-6">
-                            Prezzi
-                        </span>
-                        <h2 className="text-3xl lg:text-5xl font-bold text-white mb-4">
-                            Piani Trasparenti
-                        </h2>
-                        <p className="text-slate-400 text-lg">
-                            Prezzi in Euro, fatturazione italiana, nessun costo nascosto.
-                        </p>
-                    </motion.div>
-
-                    <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-                        {[
-                            {
-                                name: "Business",
-                                price: "€299",
-                                period: "/mese",
-                                description: "PMI e studi professionali",
-                                features: [
-                                    "500 minuti di conversazione/mese",
-                                    "1 numero telefonico italiano",
-                                    "Fino a 10 interni",
-                                    "Dashboard e trascrizioni",
-                                    "Supporto via email"
-                                ],
-                                popular: false
-                            },
-                            {
-                                name: "Professional",
-                                price: "€799",
-                                period: "/mese",
-                                description: "Aziende in crescita",
-                                features: [
-                                    "2.000 minuti di conversazione/mese",
-                                    "5 numeri telefonici italiani",
-                                    "Fino a 50 interni",
-                                    "Integrazione BYOC",
-                                    "Analytics avanzati",
-                                    "Supporto prioritario"
-                                ],
-                                popular: true
-                            },
-                            {
-                                name: "Enterprise",
-                                price: "Su misura",
-                                period: "",
-                                description: "On-premise e grandi volumi",
-                                features: [
-                                    "Minuti illimitati",
-                                    "Numeri illimitati",
-                                    "Interni illimitati",
-                                    "Installazione on-premise",
-                                    "SLA garantito 99.9%",
-                                    "Account manager dedicato",
-                                    "Integrazione CRM/ERP"
-                                ],
-                                popular: false
-                            }
-                        ].map((plan, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.1 }}
-                            >
-                                <GlassCard className={`p-8 h-full flex flex-col ${plan.popular ? 'ring-2 ring-violet-500/50' : ''}`}>
-                                    {plan.popular && (
-                                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-sm font-medium">
-                                            Più Popolare
-                                        </span>
-                                    )}
-                                    <div className="mb-6">
-                                        <h3 className="text-xl font-semibold text-white mb-1">{plan.name}</h3>
-                                        <p className="text-slate-400 text-sm">{plan.description}</p>
-                                    </div>
-                                    <div className="mb-6">
-                                        <span className="text-4xl font-bold text-white">{plan.price}</span>
-                                        {plan.period && <span className="text-slate-400">{plan.period}</span>}
-                                    </div>
-                                    <div className="flex-1 space-y-3 mb-8">
-                                        {plan.features.map((feature, j) => (
-                                            <div key={j} className="flex items-center gap-3 text-slate-300 text-sm">
-                                                <Check className="w-4 h-4 text-violet-400 flex-shrink-0" />
-                                                <span>{feature}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <MagneticButton
-                                        className="w-full py-3 rounded-xl text-sm"
-                                        variant={plan.popular ? "primary" : "secondary"}
-                                        onClick={openDemoModal}
-                                    >
-                                        {plan.name === "Enterprise" ? "Contattaci" : "Inizia Ora"}
-                                    </MagneticButton>
-                                </GlassCard>
-                            </motion.div>
-                        ))}
-                    </div>
-
-                    <p className="text-center text-slate-400 text-sm mt-8">
-                        Tutti i piani includono: configurazione iniziale gratuita, formazione, aggiornamenti automatici.
-                        <br />
-                        I minuti si riferiscono al tempo effettivo di conversazione AI.
-                    </p>
-                </div>
-            </section>
-
-            {/* FAQ Section */}
-            <section id="faq" className="py-24 relative">
-                <div className="container mx-auto px-6">
-                    <motion.div
-                        className="text-center max-w-2xl mx-auto mb-16"
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                    >
-                        <span className="inline-block px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm font-medium mb-6">
-                            FAQ
-                        </span>
-                        <h2 className="text-3xl lg:text-5xl font-bold text-white mb-4">
-                            Domande Frequenti
-                        </h2>
-                        <p className="text-slate-400 text-lg">
-                            Tutto quello che devi sapere su Vocalis
-                        </p>
-                    </motion.div>
-
-                    <div className="max-w-3xl mx-auto">
-                        <GlassCard className="p-6 lg:p-8" hover={false}>
-                            {faqs.map((faq, i) => (
-                                <FAQItem
-                                    key={i}
-                                    question={faq.question}
-                                    answer={faq.answer}
-                                    isOpen={openFAQ === i}
-                                    onClick={() => setOpenFAQ(openFAQ === i ? null : i)}
-                                />
-                            ))}
-                        </GlassCard>
-                    </div>
-                </div>
-            </section>
-
-            {/* CTA Section */}
-            <section className="py-24 relative">
-                <div className="container mx-auto px-6">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
-                    >
-                        <GlassCard className="p-12 lg:p-16 text-center relative overflow-hidden" hover={false}>
-                            {/* Background decoration */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-fuchsia-500/10 to-cyan-500/10" />
-                            <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-[120px]" />
-                            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-[120px]" />
-
-                            <div className="relative z-10">
-                                <motion.div
-                                    initial={{ scale: 0 }}
-                                    whileInView={{ scale: 1 }}
-                                    viewport={{ once: true }}
-                                    transition={{ type: "spring", delay: 0.2 }}
-                                    className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center"
-                                >
-                                    <Phone className="w-8 h-8 text-white" />
-                                </motion.div>
-
-                                <h2 className="text-3xl lg:text-5xl font-bold text-white mb-4">
-                                    Pronto a Iniziare?
-                                </h2>
-                                <p className="text-slate-400 text-lg mb-8 max-w-xl mx-auto">
-                                    Richiedi una demo gratuita e scopri come Vocalis può trasformare la gestione delle tue chiamate.
-                                </p>
-
-                                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                                    <MagneticButton className="w-full sm:w-auto px-8 py-4 rounded-2xl text-base" variant="primary" onClick={openDemoModal}>
-                                        <span className="flex items-center justify-center gap-2">
-                                            Richiedi Demo Gratuita <Sparkles className="w-5 h-5" />
-                                        </span>
-                                    </MagneticButton>
-                                    <a href="tel:+390220527810" className="w-full sm:w-auto">
-                                        <MagneticButton className="w-full px-8 py-4 rounded-2xl text-base" variant="secondary">
-                                            <span className="flex items-center justify-center gap-2">
-                                                <Phone className="w-5 h-5" /> Chiamaci
-                                            </span>
-                                        </MagneticButton>
-                                    </a>
-                                </div>
-                            </div>
-                        </GlassCard>
-                    </motion.div>
-                </div>
-            </section>
-
-            {/* Footer */}
-            <footer className="py-16 border-t border-white/5 relative">
-                <div className="container mx-auto px-6">
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
-                        {/* Brand */}
-                        <div>
-                            <Link to="/" className="flex items-center gap-2 mb-4">
-                                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center">
-                                    <Phone className="w-4 h-4 text-white" />
-                                </div>
-                                <span className="font-bold text-white">Vocalis</span>
-                            </Link>
-                            <p className="text-slate-400 text-sm mb-4 leading-relaxed">
-                                Assistente vocale AI per aziende italiane.<br />
-                                Sviluppato da Comtel Italia.
-                            </p>
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 text-xs text-slate-400">
-                                    <Shield className="w-3.5 h-3.5" />
-                                    <span>GDPR</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Links */}
-                        <div>
-                            <h4 className="font-semibold text-white mb-4">Prodotto</h4>
-                            <ul className="space-y-3 text-slate-400 text-sm">
-                                <li><a href="#come-funziona" className="hover:text-white transition-colors">Come Funziona</a></li>
-                                <li><a href="#features" className="hover:text-white transition-colors">Funzionalità</a></li>
-                                <li><a href="#pricing" className="hover:text-white transition-colors">Prezzi</a></li>
-                                <li><a href="#faq" className="hover:text-white transition-colors">FAQ</a></li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <h4 className="font-semibold text-white mb-4">Azienda</h4>
-                            <ul className="space-y-3 text-slate-400 text-sm">
-                                <li><a href="https://www.comtelitalia.it" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Comtel Italia</a></li>
-                                <li><a href="https://www.comtelitalia.it/chi-siamo" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Chi Siamo</a></li>
-                                <li><a href="https://www.comtelitalia.it/contatti" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Contatti</a></li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <h4 className="font-semibold text-white mb-4">Contatti</h4>
-                            <ul className="space-y-3 text-slate-400 text-sm">
-                                <li>Via Vittor Pisani, 10</li>
-                                <li>20124 Milano, Italia</li>
-                                <li><a href="tel:+390220527810" className="text-white font-medium hover:text-violet-400 transition-colors">+39 02 2052781</a></li>
-                                <li><a href="mailto:info@comtelitalia.it" className="hover:text-white transition-colors">info@comtelitalia.it</a></li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-8 border-t border-white/5">
-                        <p className="text-slate-400 text-sm">
-                            © 2025 Vocalis - Comtel Italia S.r.l. Tutti i diritti riservati. P.IVA 12345678901
-                        </p>
-                        <div className="flex gap-6 text-sm text-slate-400">
-                            <a href="https://www.comtelitalia.it/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Privacy Policy</a>
-                            <a href="https://www.comtelitalia.it/cookie-policy" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Cookie Policy</a>
-                        </div>
-                    </div>
-                </div>
-            </footer>
-        </div>
-    )
+      {/* Floating sound toggle */}
+      <FloatingSoundToggle level={soundLevel} onToggle={toggleSound} />
+    </div>
+  )
 }
